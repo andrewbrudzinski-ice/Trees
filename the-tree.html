@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>The Tree</title>
+<style>
+  :root{
+    --ink:#0F1C16; --ink-2:#152A20; --ink-3:#1D3728;
+    --bone:#E9E5D8; --bone-dim:#A7B0A2;
+    --moss:#8FB57A; --moss-deep:#5E7E4E; --bark:#5A4632;
+    --bloom:#D8B7C6; --gold:#D8C27A; --water:#8FC4D8; --danger:#C88A6A;
+    --sea:#0B1B22; --land:#16281F; --land-hi:#1E3627;
+    --radius:14px; --shadow:0 18px 50px -20px rgba(0,0,0,.7);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{
+    background:radial-gradient(120% 80% at 50% -10%, #1B3327 0%, var(--ink) 55%, #0A140F 100%);
+    color:var(--bone);font-family:"Inter","Helvetica Neue",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;overflow:hidden;user-select:none;
+  }
+  .serif{font-family:"Fraunces",Georgia,"Times New Roman",serif;font-weight:500;letter-spacing:.01em}
+  #app{position:relative;height:100dvh;max-width:520px;margin:0 auto;overflow:hidden}
+
+  .screen{position:absolute;inset:0;display:flex;flex-direction:column;opacity:0;pointer-events:none;transition:opacity .5s ease;padding:0 22px}
+  .screen.active{opacity:1;pointer-events:auto}
+  .screen.nopad{padding:0}
+
+  .center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:20px}
+  h1.title{font-size:15vw;line-height:.9;margin:0;font-weight:400}
+  @media(min-width:520px){h1.title{font-size:76px}}
+  .sub{color:var(--bone-dim);font-size:15px;max-width:290px;line-height:1.5;letter-spacing:.02em}
+  .eyebrow{font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--moss);font-weight:600}
+
+  button.btn{font-family:inherit;font-size:14px;font-weight:600;letter-spacing:.04em;color:var(--ink);background:var(--moss);border:none;border-radius:100px;padding:15px 34px;cursor:pointer;transition:transform .15s,background .2s}
+  button.btn:active{transform:scale(.96)}
+  button.btn.ghost{background:transparent;color:var(--bone);border:1px solid var(--ink-3)}
+  button.btn:disabled{opacity:.35;cursor:default}
+
+  .field{width:100%;max-width:320px;text-align:left}
+  .field label{display:block;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--bone-dim);margin:0 0 8px 2px}
+  input.txt{width:100%;background:var(--ink-2);border:1px solid var(--ink-3);color:var(--bone);font-family:inherit;font-size:17px;padding:14px 16px;border-radius:12px;outline:none}
+  input.txt:focus{border-color:var(--moss-deep)}
+
+  .species-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;max-width:340px}
+  .species{background:var(--ink-2);border:1px solid var(--ink-3);border-radius:12px;padding:14px 6px 12px;cursor:pointer;transition:.2s;display:flex;flex-direction:column;align-items:center;gap:8px}
+  .species.sel{border-color:var(--moss);background:var(--ink-3)}
+  .species .sp-name{font-size:12px;color:var(--bone-dim)}
+  .species.sel .sp-name{color:var(--bone)}
+  .species svg{width:38px;height:44px}
+  .species.locked{opacity:.4;pointer-events:none}
+
+  /* topbar / resources */
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 2px 6px}
+  .greeting{font-size:13px;color:var(--bone-dim);letter-spacing:.02em}
+  .resources{display:flex;gap:14px;align-items:center}
+  .res{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:600;font-variant-numeric:tabular-nums}
+  .res .dot{width:9px;height:9px;border-radius:50%}
+  .res.seed .dot{background:var(--gold)} .res.water .dot{background:var(--water)}
+
+  .stage-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;min-height:0}
+  .tree-stage{width:min(88vw,420px);height:min(52vh,440px);position:relative}
+  .tree-stage svg{width:100%;height:100%;overflow:visible}
+  .nameplate{text-align:center;margin-top:2px}
+  .nameplate .tname{font-size:34px;line-height:1}
+  .nameplate .tmeta{font-size:13px;color:var(--bone-dim);margin-top:7px;letter-spacing:.03em}
+  .stagechip{display:inline-flex;align-items:center;gap:7px;margin-top:11px;background:var(--ink-2);border:1px solid var(--ink-3);border-radius:100px;padding:6px 14px;font-size:12px;letter-spacing:.04em}
+  .health-line{margin-top:12px;width:min(70vw,240px)}
+  .health-track{height:4px;background:var(--ink-3);border-radius:4px;overflow:hidden}
+  .health-fill{height:100%;background:var(--moss);border-radius:4px;transition:width .6s ease,background .4s}
+  .health-label{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--bone-dim);margin-top:7px;display:flex;justify-content:space-between}
+
+  .actionbar{display:flex;gap:10px;padding:14px 0 22px;justify-content:center}
+  .abtn{flex:1;max-width:150px;background:var(--ink-2);border:1px solid var(--ink-3);color:var(--bone);font-family:inherit;font-size:13px;font-weight:600;letter-spacing:.04em;padding:15px 8px;border-radius:12px;cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:center;gap:7px}
+  .abtn:active{transform:scale(.97);background:var(--ink-3)}
+  .abtn.primary{background:var(--moss);color:var(--ink);border-color:transparent}
+  .abtn.primary:disabled{opacity:.4}
+
+  .navbar{display:flex;justify-content:space-around;padding:10px 0 16px;border-top:1px solid var(--ink-2)}
+  .nav{background:none;border:none;color:var(--bone-dim);font-family:inherit;font-size:11px;letter-spacing:.08em;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;padding:4px 14px;text-transform:uppercase}
+  .nav.active{color:var(--moss)}
+  .nav svg{width:20px;height:20px}
+
+  .scrollhead{padding:22px 2px 12px}
+  .scrollhead h2{margin:0;font-size:26px;font-weight:400}
+  .scrollhead p{margin:5px 0 0;color:var(--bone-dim);font-size:13px}
+  .scrollbody{flex:1;overflow-y:auto;padding-bottom:20px}
+  .scrollbody::-webkit-scrollbar{width:0}
+  .grove-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .grovecard{background:var(--ink-2);border:1px solid var(--ink-3);border-radius:var(--radius);padding:14px;display:flex;flex-direction:column;align-items:center;cursor:pointer;transition:.2s;position:relative}
+  .grovecard:active{transform:scale(.97)}
+  .grovecard .mini{width:78px;height:92px}
+  .grovecard .gname{font-size:16px;margin-top:6px}
+  .grovecard .gmeta{font-size:11px;color:var(--bone-dim);margin-top:3px}
+  .grovecard .gtier{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--moss);margin-top:6px}
+  .grovecard.add{align-items:center;justify-content:center;border-style:dashed;min-height:150px;color:var(--bone-dim)}
+
+  /* MAP */
+  #s-map{padding:0}
+  .maptop{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 8px}
+  .maptop h2{margin:0;font-size:22px;font-weight:400}
+  .maptop .mtsub{font-size:12px;color:var(--bone-dim);margin-top:2px}
+  #mapcanvas{flex:1;overflow:hidden;position:relative;background:var(--sea);touch-action:none}
+  canvas{display:block;width:100%;height:100%}
+  .mapstats{position:absolute;left:16px;bottom:78px;font-size:11px;color:var(--bone-dim);letter-spacing:.04em;line-height:1.7;pointer-events:none;text-shadow:0 1px 4px #000}
+  .mapstats b{color:var(--bone);font-weight:600;font-variant-numeric:tabular-nums}
+  .maphint{position:absolute;right:14px;top:12px;font-size:10px;color:var(--bone-dim);letter-spacing:.1em;text-transform:uppercase;pointer-events:none;background:rgba(10,18,14,.6);padding:5px 10px;border-radius:100px}
+  .zoomctl{position:absolute;right:14px;bottom:78px;display:flex;flex-direction:column;gap:8px}
+  .zoomctl button{width:38px;height:38px;border-radius:11px;background:rgba(21,42,32,.9);border:1px solid var(--ink-3);color:var(--bone);font-size:20px;cursor:pointer;font-family:inherit}
+  .zoomctl button:active{background:var(--moss);color:var(--ink)}
+  .findme{position:absolute;left:14px;bottom:20px;background:rgba(21,42,32,.92);border:1px solid var(--ink-3);color:var(--bone);font-family:inherit;font-size:12px;font-weight:600;letter-spacing:.04em;padding:10px 16px;border-radius:100px;cursor:pointer;display:flex;gap:7px;align-items:center}
+  .findme:active{background:var(--moss);color:var(--ink)}
+
+  /* plant-on-map screen */
+  #s-plantmap{padding:0}
+  .plantmap-head{position:absolute;top:0;left:0;right:0;z-index:5;padding:18px 20px;background:linear-gradient(to bottom,rgba(10,18,14,.95),transparent);text-align:center}
+  .plantmap-head .eyebrow{margin-bottom:4px}
+  .plantmap-head h2{margin:0;font-size:20px;font-weight:400}
+  .plantmap-head p{margin:5px 0 0;font-size:12px;color:var(--bone-dim)}
+  .plant-confirm{position:absolute;left:0;right:0;bottom:0;z-index:5;padding:18px 20px 26px;background:linear-gradient(to top,rgba(10,18,14,.96),transparent);display:flex;flex-direction:column;align-items:center;gap:12px;transform:translateY(120%);transition:transform .35s cubic-bezier(.2,.9,.3,1)}
+  .plant-confirm.show{transform:translateY(0)}
+  .plant-confirm .loclabel{font-size:15px}
+  .plant-confirm .loclabel b{color:var(--moss)}
+  .pinhint{position:absolute;top:50%;left:50%;transform:translate(-50%,-100%);z-index:4;pointer-events:none;font-size:11px;color:var(--bone);background:rgba(10,18,14,.7);padding:5px 12px;border-radius:100px;white-space:nowrap;margin-top:-6px}
+
+  /* sheet (journal + inspect + profile share this) */
+  .sheet{position:absolute;inset:0;background:rgba(6,12,9,.72);backdrop-filter:blur(6px);display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:opacity .3s;z-index:50}
+  .sheet.active{opacity:1;pointer-events:auto}
+  .sheet-inner{background:var(--ink);border-top-left-radius:24px;border-top-right-radius:24px;width:100%;max-width:520px;margin:0 auto;max-height:88%;overflow-y:auto;padding:8px 22px 30px;border-top:1px solid var(--ink-3);transform:translateY(30px);transition:transform .35s cubic-bezier(.2,.9,.3,1)}
+  .sheet.active .sheet-inner{transform:translateY(0)}
+  .sheet-inner::-webkit-scrollbar{width:0}
+  .grab{width:38px;height:4px;background:var(--ink-3);border-radius:4px;margin:10px auto 18px}
+  .jhead{display:flex;gap:16px;align-items:center;margin-bottom:20px}
+  .jhead .jmini{width:76px;height:90px;flex-shrink:0}
+  .jhead .jname{font-size:28px}
+  .jhead .jsub{font-size:13px;color:var(--bone-dim);margin-top:4px}
+  .ownerbtn{margin-top:9px;display:inline-flex;align-items:center;gap:7px;background:var(--ink-2);border:1px solid var(--ink-3);color:var(--bone);font-family:inherit;font-size:12px;padding:7px 13px;border-radius:100px;cursor:pointer}
+  .ownerbtn:active{background:var(--ink-3)}
+  .ownerbtn .av{width:18px;height:18px;border-radius:50%;background:var(--moss-deep)}
+  .jstats{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--ink-3);border-radius:12px;overflow:hidden;margin-bottom:22px}
+  .jstat{background:var(--ink);padding:13px 15px}
+  .jstat .k{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--bone-dim)}
+  .jstat .v{font-size:17px;margin-top:4px;font-variant-numeric:tabular-nums}
+  .timeline-h{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--moss);margin:0 0 14px}
+  .tl{list-style:none;margin:0;padding:0 0 0 4px}
+  .tl li{position:relative;padding:0 0 20px 22px;border-left:1px solid var(--ink-3)}
+  .tl li:last-child{border-left-color:transparent}
+  .tl li::before{content:"";position:absolute;left:-4px;top:3px;width:8px;height:8px;border-radius:50%;background:var(--moss)}
+  .tl .tl-date{font-size:11px;color:var(--bone-dim);letter-spacing:.04em}
+  .tl .tl-ev{font-size:14px;margin-top:2px}
+  .reactbtn{margin-top:6px;width:100%;background:var(--ink-2);border:1px solid var(--ink-3);color:var(--bone);font-family:inherit;font-size:13px;font-weight:600;padding:13px;border-radius:12px;cursor:pointer}
+  .reactbtn:active{background:var(--ink-3)}
+
+  /* profile sheet */
+  .phead{display:flex;gap:16px;align-items:center;margin-bottom:8px}
+  .pavatar{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--moss-deep),var(--ink-3));display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0}
+  .pname{font-size:24px}
+  .pjoined{font-size:12px;color:var(--bone-dim);margin-top:3px}
+  .pgrove{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px}
+  .pgrove .pt{background:var(--ink-2);border:1px solid var(--ink-3);border-radius:12px;padding:10px 4px;display:flex;flex-direction:column;align-items:center;cursor:pointer}
+  .pgrove .pt .mini{width:52px;height:62px}
+  .pgrove .pt .pn{font-size:11px;margin-top:3px}
+  .pgrove .pt .pa{font-size:10px;color:var(--bone-dim)}
+
+  #toast{position:absolute;left:50%;top:74px;transform:translate(-50%,-14px);background:var(--ink-3);border:1px solid var(--moss-deep);color:var(--bone);padding:11px 20px;border-radius:100px;font-size:13px;font-weight:500;letter-spacing:.02em;opacity:0;pointer-events:none;transition:.35s;z-index:60;white-space:nowrap}
+  #toast.show{opacity:1;transform:translate(-50%,0)}
+  #toast .amt{color:var(--gold);font-weight:700}
+
+  #dev{position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:70;background:rgba(10,18,14,.92);border:1px solid var(--ink-3);border-radius:100px;display:flex;align-items:center;gap:9px;padding:6px 8px 6px 14px;font-size:11px;color:var(--bone-dim)}
+  #dev b{color:var(--moss);font-variant-numeric:tabular-nums}
+  #dev button{background:var(--ink-3);border:none;color:var(--bone);width:24px;height:24px;border-radius:50%;font-size:14px;cursor:pointer;font-family:inherit}
+  #dev button:active{background:var(--moss);color:var(--ink)}
+  #dev .warp{width:auto;border-radius:100px;padding:0 11px;font-size:10px;letter-spacing:.08em}
+
+  .fade-in{animation:fadeIn .8s ease both}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion: reduce){*{animation-duration:.001ms!important;transition-duration:.05ms!important}}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="dev">
+    <span>day <b id="devday">0</b></span>
+    <button id="warpBack" title="rewind">‹</button>
+    <button class="warp" id="warp1">+1 day</button>
+    <button class="warp" id="warp30">+30</button>
+    <button class="warp" id="warp365">+1yr</button>
+  </div>
+  <div id="toast"></div>
+
+  <!-- welcome -->
+  <section class="screen active" id="s-welcome">
+    <div class="center">
+      <div class="eyebrow fade-in">A living forest</div>
+      <h1 class="title serif fade-in">The Tree</h1>
+      <p class="sub fade-in">Plant one tree anywhere on Earth. Come back tomorrow. Watch it grow into something only time could make.</p>
+      <button class="btn fade-in" onclick="Onboard.go('species')">Plant your first tree</button>
+      <button class="btn ghost fade-in" style="margin-top:-8px" onclick="Account.open('signin')">I already have an account</button>
+    </div>
+  </section>
+
+  <!-- ACCOUNT -->
+  <section class="screen" id="s-account">
+    <div class="center">
+      <div class="eyebrow" id="acEyebrow">Save your forest</div>
+      <h2 class="serif" id="acTitle" style="font-size:28px;margin:0;font-weight:400">Create your account</h2>
+      <p class="sub" id="acBlurb">Your trees are waiting. Create an account to keep them growing while you're away.</p>
+      <div class="field"><label>Name</label>
+        <input class="txt" id="acName" placeholder="Andrew" maxlength="24" autocomplete="name"></div>
+      <div class="field"><label>Email</label>
+        <input class="txt" id="acEmail" placeholder="you@example.com" autocomplete="email" inputmode="email"></div>
+      <div class="field"><label>Password</label>
+        <input class="txt" id="acPass" placeholder="••••••••" type="password" autocomplete="current-password"></div>
+      <div id="acError" style="color:var(--danger);font-size:12px;min-height:15px;margin-top:-6px"></div>
+      <button class="btn" id="acSubmit" onclick="Account.submit()">Create account</button>
+      <button class="btn ghost" id="acToggle" onclick="Account.toggleMode()" style="margin-top:-8px">I already have an account</button>
+      <button class="btn ghost" id="acSkip" style="margin-top:-8px;border:none;color:var(--bone-dim)" onclick="Account.skip()">Maybe later</button>
+    </div>
+  </section>
+
+  <!-- species -->
+  <section class="screen" id="s-species">
+    <div class="center">
+      <div class="eyebrow">Step 1 of 3</div>
+      <h2 class="serif" style="font-size:28px;margin:0;font-weight:400">Choose a species</h2>
+      <div class="species-grid" id="speciesGrid"></div>
+      <button class="btn" id="speciesNext" disabled onclick="Onboard.go('name')">Continue</button>
+    </div>
+  </section>
+
+  <!-- name -->
+  <section class="screen" id="s-name">
+    <div class="center">
+      <div class="eyebrow">Step 2 of 3</div>
+      <h2 class="serif" style="font-size:28px;margin:0;font-weight:400">Name your tree</h2>
+      <div class="field"><label>Tree name</label>
+        <input class="txt" id="nameInput" placeholder="Gary" maxlength="18" autocomplete="off"></div>
+      <button class="btn" id="nameNext" disabled onclick="Onboard.go('plantmap')">Choose a spot</button>
+    </div>
+  </section>
+
+  <!-- PLANT ON MAP -->
+  <section class="screen" id="s-plantmap">
+    <div class="plantmap-head">
+      <div class="eyebrow">Step 3 of 3</div>
+      <h2 class="serif">Where on Earth?</h2>
+      <p>Drag the world. Tap to drop your tree.</p>
+    </div>
+    <div id="mapcanvas" style="border-radius:0">
+      <canvas id="plantCanvas"></canvas>
+      <div class="pinhint" id="pinHint" style="display:none"></div>
+      <div class="zoomctl">
+        <button onclick="PlantMap.zoomBy(1.4)">+</button>
+        <button onclick="PlantMap.zoomBy(0.7)">−</button>
+      </div>
+    </div>
+    <div class="plant-confirm" id="plantConfirm">
+      <div class="loclabel">Planting <b id="pcName">Gary</b> in <b id="pcLoc">—</b></div>
+      <button class="btn" onclick="Onboard.plant()">Plant here</button>
+    </div>
+  </section>
+
+  <!-- planting anim -->
+  <section class="screen" id="s-planting">
+    <div class="center">
+      <div class="tree-stage" id="plantStage"></div>
+      <p class="sub" id="plantMsg" style="opacity:0;transition:opacity 1s">A seed rests in the earth.</p>
+      <button class="btn" id="plantDone" style="opacity:0;transition:opacity 1s" onclick="App.finishPlanting()">Keep this tree</button>
+    </div>
+  </section>
+
+  <!-- HOME -->
+  <section class="screen" id="s-home">
+    <div class="topbar">
+      <div class="greeting" id="greeting" onclick="App.nav('me')" style="cursor:pointer">Good morning</div>
+      <div class="resources">
+        <div class="res seed"><span class="dot"></span><span id="seedCount">0</span></div>
+        <div class="res water"><span class="dot"></span><span id="waterCount">0</span></div>
+      </div>
+    </div>
+    <div class="stage-wrap">
+      <div class="tree-stage" id="homeStage"></div>
+      <div class="nameplate">
+        <div class="tname serif" id="homeName">Gary</div>
+        <div class="tmeta" id="homeMeta">Maple · 0 days old</div>
+        <div class="stagechip"><span class="glyph" id="homeGlyph">🌱</span><span id="homeStageLabel">Seed</span></div>
+        <div class="health-line">
+          <div class="health-track"><div class="health-fill" id="homeHealth" style="width:100%"></div></div>
+          <div class="health-label"><span id="healthWord">Thriving</span><span id="healthPct">100%</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="actionbar">
+      <button class="abtn primary" id="checkinBtn" onclick="App.checkin()">Check in today</button>
+      <button class="abtn" id="waterBtn" onclick="App.water()">💧 Water</button>
+    </div>
+    <div class="navbar" id="navHome"></div>
+  </section>
+
+  <!-- GROVE -->
+  <section class="screen" id="s-grove">
+    <div class="scrollhead"><h2 class="serif" id="groveTitle">Your Grove</h2><p id="groveSub">1 tree</p></div>
+    <div class="scrollbody"><div class="grove-grid" id="groveGrid"></div></div>
+    <div class="navbar" id="navGrove"></div>
+  </section>
+
+  <!-- MAP -->
+  <section class="screen" id="s-map">
+    <div class="maptop">
+      <div><h2 class="serif">The Forest</h2><div class="mtsub">A world grown by everyone</div></div>
+      <div class="res seed"><span class="dot"></span><span id="mapSeed">0</span></div>
+    </div>
+    <div id="mapcanvas">
+      <canvas id="forestCanvas"></canvas>
+      <div class="maphint">tap a tree to inspect</div>
+      <div class="zoomctl">
+        <button onclick="Forest.zoomBy(1.4)">+</button>
+        <button onclick="Forest.zoomBy(0.7)">−</button>
+      </div>
+      <button class="findme" onclick="Forest.flyToMine()">📍 My Grove</button>
+      <div class="mapstats">
+        <div><b id="statTrees">0</b> trees planted</div>
+        <div><b id="statGrowing">0</b> growing · <b id="statAncient">0</b> ancient</div>
+        <div><b id="statCountries">184</b> regions</div>
+      </div>
+    </div>
+    <div class="navbar" id="navMap"></div>
+  </section>
+
+  <!-- INSPECT / JOURNAL sheet -->
+  <div class="sheet" id="journal">
+    <div class="sheet-inner">
+      <div class="grab"></div>
+      <div class="jhead">
+        <div class="jmini" id="jMini"></div>
+        <div>
+          <div class="jname serif" id="jName">Gary</div>
+          <div class="jsub" id="jSub">Maple · Detroit</div>
+          <button class="ownerbtn" id="jOwnerBtn"><span class="av"></span><span id="jOwnerName">You</span></button>
+        </div>
+      </div>
+      <div class="jstats" id="jStats"></div>
+      <button class="reactbtn" id="jReact" style="display:none">🌱 Nice tree</button>
+      <p class="timeline-h" id="jTlHead">Life so far</p>
+      <ul class="tl" id="jTimeline"></ul>
+    </div>
+  </div>
+
+  <!-- PROFILE sheet -->
+  <div class="sheet" id="profile">
+    <div class="sheet-inner">
+      <div class="grab"></div>
+      <div class="phead">
+        <div class="pavatar" id="pAvatar">🌲</div>
+        <div>
+          <div class="pname serif" id="pName">Wanderer</div>
+          <div class="pjoined" id="pJoined">Planting since 2026</div>
+        </div>
+      </div>
+      <div class="jstats" id="pStats" style="margin-top:18px"></div>
+      <button class="reactbtn" id="pSignOut" style="display:none;margin-bottom:18px" onclick="Account.signOut()">Sign out</button>
+      <p class="timeline-h" id="pGroveHead">Their grove</p>
+      <div class="pgrove" id="pGrove"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ============================================================ THE TREE — prototype v2 ============================================================ */
+const DAY=86400000;
+const SPECIES={
+  maple:{name:"Maple",canopy:"#C25A3B",canopy2:"#9E3F2B",trunk:"#5A4632",free:true},
+  oak:{name:"Oak",canopy:"#6E8F4E",canopy2:"#4E6E38",trunk:"#584636",free:true},
+  pine:{name:"Pine",canopy:"#3E6B4E",canopy2:"#2C4F39",trunk:"#4A3A2C",free:true},
+  cherry:{name:"Cherry",canopy:"#E5B4CC",canopy2:"#D094B4",trunk:"#5C4638",free:false,unlockAt:2},
+  birch:{name:"Birch",canopy:"#C7C56A",canopy2:"#9FA24E",trunk:"#C9C6BC",free:false,unlockAt:3},
+  willow:{name:"Willow",canopy:"#8FB57A",canopy2:"#6E9560",trunk:"#4E4030",free:false,unlockAt:5},
+};
+const STAGES=[{d:0,label:"Seed",glyph:"🌱"},{d:1,label:"Sprout",glyph:"🌱"},{d:2,label:"Seedling",glyph:"🌿"},{d:3,label:"Sapling",glyph:"🌿"},{d:4,label:"Young Tree",glyph:"🌳"},{d:5,label:"Growing Tree",glyph:"🌳"},{d:6,label:"Large Tree",glyph:"🌳"},{d:7,label:"Mature Tree",glyph:"🌳"}];
+const TIERS=[{d:7,label:"Mature",glyph:"🌳"},{d:30,label:"Established",glyph:"🌳"},{d:100,label:"Old",glyph:"🌳"},{d:365,label:"Ancient",glyph:"🌲"},{d:1000,label:"Legendary",glyph:"🌲"},{d:2000,label:"Elder",glyph:"🌲"}];
+
+const Clock={offset:0,now(){return Date.now()+this.offset;},warp(d){this.offset+=d*DAY;App.onTimeChange();}};
+
+let TREE_ID=1;
+function makeTree(species,name,lat,lng,loc,plantedAt,ownerId){
+  return {id:TREE_ID++,species,name,lat,lng,loc,plantedAt,ownerId:ownerId||'me',seed:Math.floor(Math.random()*1e6),lastVisit:plantedAt,health:100,events:[{t:plantedAt,ev:"Planted",glyph:"🌱"}],milestonesHit:{},reactions:0};
+}
+function ageMs(t){return Math.max(0,Clock.now()-t.plantedAt);}
+function ageDays(t){return ageMs(t)/DAY;}
+function ageDaysInt(t){return Math.floor(ageDays(t));}
+function stageInfo(t){const d=ageDaysInt(t);if(d<7)return STAGES[Math.min(d,7)];let tr=TIERS[0];for(const x of TIERS)if(d>=x.d)tr=x;return{label:tr.label,glyph:tr.glyph,tier:true};}
+function growthT(t){return Math.min(1,ageDays(t)/7);}
+function ageFactor(t){const d=ageDays(t);if(d<=7)return 0;return Math.min(4.2,Math.log10(d-6)*1.28);}
+function recomputeHealth(t){const ds=(Clock.now()-t.lastVisit)/DAY;let h=t.health;if(ds>1)h=Math.max(18,100-(ds-1)*9);t.health=Math.round(h);return t.health;}
+function healthWord(h){return h>=90?"Thriving":h>=70?"Healthy":h>=45?"Dry":h>=28?"Wilting":"Struggling";}
+
+/* ---------- procedural tree renderer (same as v1) ---------- */
+function rng(seed){let s=seed>>>0;return()=>(s=(s*1664525+1013904223)>>>0)/4294967296;}
+function renderTree(tree,size){
+  const sp=SPECIES[tree.species],g=growthT(tree),af=ageFactor(tree),h=recomputeHealth(tree)/100,rand=rng(tree.seed);
+  const W=200,H=240,cx=100,ground=222;const days=ageDays(tree);let parts=[];
+  parts.push(`<ellipse cx="${cx}" cy="${ground+6}" rx="${34+af*10}" ry="7" fill="#000" opacity="0.28"/>`);
+  if(days<0.6){parts.push(`<path d="M60 ${ground} Q100 ${ground-10} 140 ${ground}" stroke="#3A2C1E" stroke-width="5" fill="none" stroke-linecap="round"/>`);parts.push(`<ellipse cx="${cx}" cy="${ground-6}" rx="7" ry="9" fill="#6B4E32"/>`);return svgWrap(parts,W,H);}
+  const trunkH=42+g*78+af*22,trunkW=5+g*10+af*14,topY=ground-trunkH,tw=trunkW,twTop=Math.max(2,trunkW*0.45);
+  parts.push(`<path d="M${cx-tw/2} ${ground} C ${cx-tw/2-af} ${ground-trunkH*0.4}, ${cx-twTop/2-2} ${topY+8}, ${cx-twTop/2} ${topY} L ${cx+twTop/2} ${topY} C ${cx+twTop/2+2} ${topY+8}, ${cx+tw/2+af} ${ground-trunkH*0.4}, ${cx+tw/2} ${ground} Z" fill="${sp.trunk}"/>`);
+  if(af>0.6)parts.push(`<path d="M${cx-tw/4} ${ground-6} Q${cx-tw/4-2} ${topY+trunkH*0.5} ${cx-tw/6} ${topY+10}" stroke="#00000030" stroke-width="1.5" fill="none"/>`);
+  if(af>1.4&&rand()>0.3)parts.push(`<ellipse cx="${cx+(rand()-0.5)*tw*0.4}" cy="${ground-trunkH*0.45}" rx="${3+af}" ry="${5+af*1.5}" fill="#00000055"/>`);
+  const branchCount=Math.floor(1+g*2+af*3),isPine=tree.species==='pine',isWillow=tree.species==='willow';
+  if(g>0.3&&!isPine){for(let i=0;i<branchCount;i++){const t=(i+1)/(branchCount+1),by=topY+trunkH*0.15+t*trunkH*0.5,dir=(i%2===0?-1:1),len=(14+af*10)*(1-t*0.3),bx=cx+dir*len,byEnd=by-8-af*3;parts.push(`<path d="M${cx} ${by} Q${cx+dir*len*0.5} ${by-4} ${bx} ${byEnd}" stroke="${sp.trunk}" stroke-width="${Math.max(1.5,twTop*0.6*(1-t))}" fill="none" stroke-linecap="round"/>`);}}
+  const canopyR=(26+g*30+af*18),canopyCy=topY-canopyR*0.35,leafColor=mix(sp.canopy,"#2C4432",(1-h)*0.55),leafColor2=mix(sp.canopy2,"#243528",(1-h)*0.55);
+  if(days>=0.6&&days<2){parts.push(`<path d="M${cx} ${ground} L${cx} ${ground-18-g*14}" stroke="#6E9560" stroke-width="3" stroke-linecap="round"/>`);parts.push(`<ellipse cx="${cx-6}" cy="${ground-18-g*10}" rx="7" ry="4" fill="${sp.canopy}" transform="rotate(-30 ${cx-6} ${ground-18-g*10})"/>`);parts.push(`<ellipse cx="${cx+6}" cy="${ground-22-g*12}" rx="7" ry="4" fill="${sp.canopy}" transform="rotate(30 ${cx+6} ${ground-22-g*12})"/>`);return svgWrap(parts,W,H);}
+  if(isPine){const layers=Math.floor(3+g*2+af);for(let i=0;i<layers;i++){const ly=topY+i*(trunkH/layers)-6,lw=canopyR*(1-i/(layers+1))*1.1;parts.push(`<path d="M${cx} ${ly-canopyR*0.5} L${cx-lw} ${ly+8} L${cx+lw} ${ly+8} Z" fill="${i%2?leafColor2:leafColor}"/>`);}}
+  else if(isWillow){parts.push(`<ellipse cx="${cx}" cy="${canopyCy}" rx="${canopyR}" ry="${canopyR*0.7}" fill="${leafColor}"/>`);for(let i=0;i<6+Math.floor(af*3);i++){const dx=cx+(i-3)*(canopyR/3);parts.push(`<path d="M${dx} ${canopyCy} Q${dx+4} ${canopyCy+30} ${dx-3} ${canopyCy+46+af*8}" stroke="${leafColor2}" stroke-width="2" fill="none" opacity="0.8"/>`);}}
+  else{const blobs=Math.floor(3+af*3);parts.push(`<circle cx="${cx}" cy="${canopyCy}" r="${canopyR}" fill="${leafColor2}"/>`);for(let i=0;i<blobs;i++){const a=rand()*Math.PI*2,rr=canopyR*(0.55+rand()*0.5),px=cx+Math.cos(a)*canopyR*0.6,py=canopyCy+Math.sin(a)*canopyR*0.5;parts.push(`<circle cx="${px}" cy="${py}" r="${rr}" fill="${i%2?leafColor:leafColor2}" opacity="0.96"/>`);}parts.push(`<circle cx="${cx}" cy="${canopyCy-4}" r="${canopyR*0.7}" fill="${leafColor}" opacity="0.9"/>`);}
+  if(af>0.5){parts.push(`<ellipse cx="${cx-tw/2}" cy="${ground-3}" rx="6" ry="3" fill="#6E8F4E" opacity="0.6"/>`);parts.push(`<ellipse cx="${cx+tw/3}" cy="${ground-2}" rx="5" ry="2.5" fill="#5E7E4E" opacity="0.5"/>`);}
+  if(af>1.0&&rand()>0.4){const mx=cx-tw/2-8;parts.push(`<rect x="${mx-1}" y="${ground-8}" width="2.5" height="7" fill="#D8CDBA"/>`);parts.push(`<ellipse cx="${mx}" cy="${ground-8}" rx="5" ry="3" fill="#B5603F"/>`);}
+  if(tree.species==='cherry'&&g>0.7){for(let i=0;i<Math.floor(6+af*4);i++){const a=rand()*Math.PI*2,rr=canopyR*(0.4+rand()*0.6);parts.push(`<circle cx="${cx+Math.cos(a)*rr}" cy="${canopyCy+Math.sin(a)*rr*0.8}" r="2.4" fill="#FBEAF2"/>`);}}
+  if(af>1.6&&rand()>0.35){const bx=cx+canopyR*0.5,by=canopyCy-canopyR*0.4;parts.push(`<path d="M${bx-5} ${by} Q${bx} ${by-4} ${bx+5} ${by}" stroke="#111" stroke-width="1.6" fill="none"/>`);}
+  return svgWrap(parts,W,H);
+}
+function svgWrap(parts,W,H){return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMax meet"><g class="breathe">${parts.join("")}</g></svg>`;}
+function mix(a,b,t){const pa=hx(a),pb=hx(b);return `rgb(${Math.round(pa[0]+(pb[0]-pa[0])*t)},${Math.round(pa[1]+(pb[1]-pa[1])*t)},${Math.round(pa[2]+(pb[2]-pa[2])*t)})`;}
+function hx(c){c=c.replace('#','');return[parseInt(c.slice(0,2),16),parseInt(c.slice(2,4),16),parseInt(c.slice(4,6),16)];}
+const style=document.createElement('style');style.textContent=`.breathe{transform-origin:100px 222px;animation:breathe 6s ease-in-out infinite}@keyframes breathe{0%,100%{transform:rotate(-.6deg) scaleY(1)}50%{transform:rotate(.6deg) scaleY(1.008)}}@media (prefers-reduced-motion: reduce){.breathe{animation:none}}`;document.head.appendChild(style);
+
+/* ============================================================ WORLD GEOGRAPHY (simplified continents, equirectangular) lng:-180..180  lat:90..-90  →  x:0..1  y:0..1 ============================================================ */
+function ll2xy(lat,lng){return{x:(lng+180)/360, y:(90-lat)/180};}
+function xy2ll(x,y){return{lat:90-y*180, lng:x*360-180};}
+// Coarse continent polygons (enough to read as Earth). Each is [lng,lat] pairs.
+const CONTINENTS=[
+  {name:"North America",pts:[[-168,66],[-160,71],[-140,70],[-125,60],[-124,48],[-117,33],[-105,23],[-97,18],[-83,10],[-81,25],[-80,32],[-76,38],[-70,44],[-60,47],[-64,60],[-78,63],[-95,58],[-125,72],[-155,72],[-168,66]]},
+  {name:"South America",pts:[[-81,8],[-77,0],[-80,-6],[-71,-18],[-70,-30],[-73,-42],[-75,-52],[-68,-55],[-64,-50],[-58,-38],[-48,-25],[-40,-20],[-35,-8],[-50,0],[-60,6],[-72,11],[-81,8]]},
+  {name:"Europe",pts:[[-10,36],[-9,43],[-2,48],[-5,58],[5,62],[12,66],[26,70],[40,66],[38,54],[30,46],[20,40],[10,38],[0,36],[-10,36]]},
+  {name:"Africa",pts:[[-16,14],[-17,21],[-10,31],[0,37],[11,37],[24,32],[32,31],[43,12],[51,12],[40,-2],[40,-15],[35,-24],[26,-34],[18,-35],[12,-18],[9,-1],[8,4],[-8,5],[-16,14]]},
+  {name:"Asia",pts:[[30,46],[40,66],[60,70],[90,74],[130,73],[160,68],[180,66],[170,60],[155,52],[140,46],[135,35],[122,30],[110,20],[95,15],[80,8],[77,20],[68,24],[60,25],[48,30],[35,35],[30,46]]},
+  {name:"India",pts:[[68,24],[72,20],[73,15],[77,8],[80,13],[83,18],[88,22],[90,22],[85,26],[77,30],[70,28],[68,24]]},
+  {name:"Southeast Asia",pts:[[95,15],[100,13],[105,10],[110,1],[105,-6],[115,-8],[128,-8],[140,-6],[132,0],[125,6],[120,16],[108,20],[100,20],[95,15]]},
+  {name:"Australia",pts:[[114,-22],[122,-18],[131,-12],[142,-11],[147,-19],[153,-28],[150,-38],[141,-38],[131,-32],[123,-34],[115,-34],[114,-22]]},
+  {name:"Antarctica",pts:[[-160,-75],[-100,-73],[-40,-72],[20,-70],[80,-67],[140,-66],[180,-70],[120,-78],[40,-80],[-60,-80],[-160,-75]]},
+  {name:"Greenland",pts:[[-45,60],[-30,60],[-20,70],[-25,80],[-45,83],[-60,80],[-55,68],[-45,60]]},
+  {name:"UK",pts:[[-6,50],[-3,54],[-6,58],[-8,55],[-6,50]]},
+  {name:"Japan",pts:[[130,31],[136,35],[141,40],[143,44],[140,37],[135,33],[130,31]]},
+  {name:"New Zealand",pts:[[167,-45],[171,-44],[174,-41],[178,-38],[173,-42],[167,-45]]},
+];
+// Named place anchors for labels + reverse geocode
+const PLACES=[
+  {name:"Detroit",lat:42.3,lng:-83.0},{name:"New York",lat:40.7,lng:-74.0},{name:"Los Angeles",lat:34.0,lng:-118.2},
+  {name:"Mexico City",lat:19.4,lng:-99.1},{name:"São Paulo",lat:-23.5,lng:-46.6},{name:"London",lat:51.5,lng:-0.1},
+  {name:"Paris",lat:48.9,lng:2.4},{name:"Lagos",lat:6.5,lng:3.4},{name:"Cairo",lat:30.0,lng:31.2},
+  {name:"Moscow",lat:55.8,lng:37.6},{name:"Mumbai",lat:19.1,lng:72.9},{name:"Tokyo",lat:35.7,lng:139.7},
+  {name:"Beijing",lat:39.9,lng:116.4},{name:"Sydney",lat:-33.9,lng:151.2},{name:"Jakarta",lat:-6.2,lng:106.8},
+  {name:"Cape Town",lat:-33.9,lng:18.4},{name:"Buenos Aires",lat:-34.6,lng:-58.4},{name:"Toronto",lat:43.7,lng:-79.4},
+];
+function nearestPlace(lat,lng){let best=null,bd=1e9;for(const p of PLACES){const d=(p.lat-lat)**2+((p.lng-lng)*Math.cos(lat*Math.PI/180))**2;if(d<bd){bd=d;best=p;}}return bd<900?best.name:regionFor(lat,lng);}
+function regionFor(lat,lng){if(lng<-30&&lat>10)return"North America";if(lng<-30)return"South America";if(lng<40&&lat>35)return"Europe";if(lng<52&&lat<35)return"Africa";if(lng<100&&lat>5)return"Central Asia";if(lat<0&&lng>110)return"Oceania";return"Asia";}
+
+/* ---------- fictional other users + their trees ---------- */
+const NAMES=["Fern","Rowan","Willa","Cedar","Juniper","Hazel","Ash","Linden","Maple","Iris","Bramble","Sage","Aspen","Clover","Basil","Moss","Wren","Alder"];
+const USERS={};
+function userFor(id){
+  if(USERS[id])return USERS[id];
+  const r=rng(id*2654435761);
+  const nm=NAMES[Math.floor(r()*NAMES.length)];
+  const joined=2026-Math.floor(r()*1);
+  USERS[id]={id,name:nm+(id%7?'':'wood'),joinYear:joined,glyph:['🌲','🌳','🌿','🍃'][Math.floor(r()*4)]};
+  return USERS[id];
+}
+const AMBIENT=[]; // {tree}
+function seedAmbient(){
+  AMBIENT.length=0;
+  const clusters=[[42.3,-83.0],[40.7,-74],[51.5,-0.1],[35.7,139.7],[-23.5,-46.6],[19.1,72.9],[6.5,3.4],[-33.9,151.2],[48.9,2.4],[34,-118.2],[19.4,-99.1],[55.8,37.6],[-33.9,18.4],[39.9,116.4]];
+  let uid=100;
+  clusters.forEach(([clat,clng])=>{
+    const n=25+Math.floor(Math.random()*45);
+    const ownerPool=[];for(let k=0;k<6;k++)ownerPool.push(uid++);
+    for(let i=0;i<n;i++){
+      const lat=clat+(Math.random()-0.5)*7,lng=clng+(Math.random()-0.5)*9;
+      const owner=ownerPool[Math.floor(Math.random()*ownerPool.length)];
+      const sp=['maple','oak','pine','cherry','birch','willow'][Math.floor(Math.random()*6)];
+      const ageD=Math.random()<0.15?Math.floor(Math.random()*1400):Math.floor(Math.random()*300);
+      const t=makeTree(sp,NAMES[Math.floor(Math.random()*NAMES.length)],lat,lng,nearestPlace(lat,lng),Clock.now()-ageD*DAY,owner);
+      t.reactions=Math.floor(Math.random()*40);
+      AMBIENT.push(t);
+    }
+  });
+}
+
+/* ============================================================ SHARED MAP ENGINE (used by plant-picker and forest) ============================================================ */
+function makeMapEngine(canvasId,opts){
+  const eng={
+    canvas:document.getElementById(canvasId),ctx:null,w:0,h:0,
+    // view centered on lng/lat with zoom (1 = whole world fits width)
+    cx:opts.startLng!==undefined?opts.startLng:-40, cy:opts.startLat!==undefined?opts.startLat:35,
+    zoom:opts.startZoom||1.1, minZoom:0.9, maxZoom:60,
+    onTap:opts.onTap, drawTrees:opts.drawTrees,
+    resize(){const r=this.canvas.parentElement.getBoundingClientRect();const dpr=window.devicePixelRatio||1;this.canvas.width=r.width*dpr;this.canvas.height=r.height*dpr;this.canvas.style.width=r.width+'px';this.canvas.style.height=r.height+'px';this.ctx=this.canvas.getContext('2d');this.ctx.setTransform(dpr,0,0,dpr,0,0);this.w=r.width;this.h=r.height;},
+    // projection: world x(0..1) -> screen
+    scale(){return this.w*this.zoom;}, // px per world-x unit
+    sx(lng){const wx=(lng+180)/360;const cwx=(this.cx+180)/360;return this.w/2+(wx-cwx)*this.scale();},
+    sy(lat){const wy=(90-lat)/180;const cwy=(90-this.cy)/180;return this.h/2+(wy-cwy)*this.scale();}, // note: y uses same scale for aspect
+    invert(px,py){const cwx=(this.cx+180)/360,cwy=(90-this.cy)/180;const wx=cwx+(px-this.w/2)/this.scale();const wy=cwy+(py-this.h/2)/this.scale();return{lat:90-wy*180,lng:wx*360-180};},
+    zoomBy(f,ax,ay){const before=this.invert(ax??this.w/2,ay??this.h/2);this.zoom=Math.max(this.minZoom,Math.min(this.maxZoom,this.zoom*f));const after=this.invert(ax??this.w/2,ay??this.h/2);this.cx+=before.lng-after.lng;this.cy+=before.lat-after.lat;this.clamp();this.draw();},
+    clamp(){this.cy=Math.max(-84,Math.min(84,this.cy));},
+    draw(){
+      const ctx=this.ctx;if(!ctx)return;const W=this.w,H=this.h;
+      ctx.clearRect(0,0,W,H);ctx.fillStyle=getCss('--sea');ctx.fillRect(0,0,W,H);
+      // subtle graticule
+      ctx.strokeStyle='rgba(143,181,122,0.05)';ctx.lineWidth=1;
+      for(let lng=-180;lng<=180;lng+=30){const x=this.sx(lng);ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+      for(let lat=-60;lat<=60;lat+=30){const y=this.sy(lat);ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+      // continents
+      CONTINENTS.forEach(c=>{
+        ctx.beginPath();
+        c.pts.forEach(([lng,lat],i)=>{const x=this.sx(lng),y=this.sy(lat);i?ctx.lineTo(x,y):ctx.moveTo(x,y);});
+        ctx.closePath();
+        ctx.fillStyle=getCss('--land');ctx.fill();
+        ctx.strokeStyle=getCss('--land-hi');ctx.lineWidth=1;ctx.stroke();
+      });
+      // place labels (only when zoomed a bit)
+      if(this.zoom>1.6){ctx.fillStyle='rgba(233,229,216,.35)';ctx.font='italic 12px Fraunces,serif';ctx.textAlign='center';
+        PLACES.forEach(p=>{const x=this.sx(p.lng),y=this.sy(p.lat);if(x>-40&&x<W+40&&y>0&&y<H)ctx.fillText(p.name,x,y-3);});}
+      if(this.drawTrees)this.drawTrees(this,ctx);
+      if(this.pin&&this.drawPinFn)this.drawPinFn(this,ctx);
+    },
+    bind(){
+      const c=this.canvas;let drag=false,moved=false,lx,ly,sx0,sy0;
+      const down=(x,y)=>{drag=true;moved=false;lx=x;ly=y;sx0=x;sy0=y;};
+      const mv=(x,y)=>{if(!drag)return;const dx=x-lx,dy=y-ly;if(Math.abs(x-sx0)+Math.abs(y-sy0)>6)moved=true;const s=this.scale();this.cx-=dx/s*360;this.cy+=dy/s*180;this.clamp();lx=x;ly=y;this.draw();};
+      const up=(x,y)=>{if(drag&&!moved&&this.onTap){const ll=this.invert(x,y);this.onTap(ll,x,y);}drag=false;};
+      c.addEventListener('mousedown',e=>down(e.clientX,e.clientY));
+      window.addEventListener('mousemove',e=>mv(e.clientX,e.clientY));
+      window.addEventListener('mouseup',e=>up(e.clientX,e.clientY));
+      c.addEventListener('wheel',e=>{e.preventDefault();const r=c.getBoundingClientRect();this.zoomBy(e.deltaY<0?1.12:0.89,e.clientX-r.left,e.clientY-r.top);},{passive:false});
+      let pd=0,pcx,pcy;
+      c.addEventListener('touchstart',e=>{if(e.touches.length===1)down(e.touches[0].clientX,e.touches[0].clientY);},{passive:true});
+      c.addEventListener('touchmove',e=>{
+        if(e.touches.length===2){const a=e.touches[0],b=e.touches[1];const d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);const r=c.getBoundingClientRect();const mx=(a.clientX+b.clientX)/2-r.left,my=(a.clientY+b.clientY)/2-r.top;if(pd)this.zoomBy(d/pd,mx,my);pd=d;drag=false;}
+        else if(e.touches.length===1)mv(e.touches[0].clientX,e.touches[0].clientY);
+      },{passive:true});
+      c.addEventListener('touchend',e=>{if(pd&&e.touches.length===0)pd=0;if(e.changedTouches.length&&!pd){const t=e.changedTouches[0];up(t.clientX,t.clientY);}},{passive:true});
+    }
+  };
+  return eng;
+}
+function getCss(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+
+/* ============================================================ STATE ============================================================ */
+const State={trees:[],active:0,seeds:0,water:3,streak:0,lastCheckinDay:-1,get tree(){return this.trees[this.active];}};
+const SECOND_TREE_COST=5;
+const ME={id:'me',name:'You',email:null,joinYear:2026,isGuest:true};
+const ACCOUNTS={}; // email -> {name,email,pass} (prototype only, in-memory)
+
+/* ============================================================ ONBOARDING ============================================================ */
+const Onboard={
+  species:'maple',name:'',lat:null,lng:null,loc:'',
+  init(){
+    const grid=document.getElementById('speciesGrid');grid.innerHTML='';
+    ['maple','oak','pine','cherry','birch','willow'].forEach(key=>{
+      const sp=SPECIES[key],locked=!sp.free;
+      const el=document.createElement('div');el.className='species'+(key==='maple'?' sel':'')+(locked?' locked':'');
+      el.innerHTML=`${miniTreeSVG(key)}<div class="sp-name">${sp.name}${locked?' 🔒':''}</div>`;
+      if(!locked)el.onclick=()=>{document.querySelectorAll('.species').forEach(s=>s.classList.remove('sel'));el.classList.add('sel');this.species=key;document.getElementById('speciesNext').disabled=false;};
+      grid.appendChild(el);
+    });
+    const ni=document.getElementById('nameInput');ni.addEventListener('input',()=>{this.name=ni.value.trim();document.getElementById('nameNext').disabled=!this.name;});
+  },
+  go(step){
+    show('s-'+step);
+    if(step==='name')setTimeout(()=>document.getElementById('nameInput').focus(),300);
+    if(step==='plantmap'){document.getElementById('pcName').textContent=this.name||'Gary';PlantMap.start();}
+  },
+  plant(){
+    if(this.lat===null){this.lat=42.3;this.lng=-83.0;this.loc='Detroit';}
+    const t=makeTree(this.species,this.name||'Gary',this.lat,this.lng,this.loc,Clock.now(),'me');
+    State.trees=[t];State.active=0;
+    show('s-planting');const stage=document.getElementById('plantStage');stage.innerHTML=renderTree(t);
+    setTimeout(()=>document.getElementById('plantMsg').style.opacity=1,400);
+    setTimeout(()=>{Clock.offset+=0.7*DAY;stage.innerHTML=renderTree(t);document.getElementById('plantMsg').textContent='A sprout breaks the surface.';},1800);
+    setTimeout(()=>{Clock.offset-=0.7*DAY;document.getElementById('plantDone').style.opacity=1;},3200);
+  }
+};
+function miniTreeSVG(species){const fake={species,seed:12345,plantedAt:Clock.now()-3.5*DAY,health:100,lastVisit:Clock.now()};return renderTree(fake);}
+
+/* ---------- plant-on-map picker ---------- */
+const PlantMap={
+  eng:null,
+  start(){
+    if(!this.eng){
+      this.eng=makeMapEngine('plantCanvas',{startLng:-40,startLat:30,startZoom:1.1,
+        onTap:(ll,px,py)=>this.pick(ll)});
+      this.eng.drawPinFn=(e,ctx)=>{const x=e.sx(e.pin.lng),y=e.sy(e.pin.lat);ctx.fillStyle=getCss('--moss');ctx.beginPath();ctx.arc(x,y-10,6,0,7);ctx.fill();ctx.beginPath();ctx.moveTo(x-6,y-8);ctx.lineTo(x,y+2);ctx.lineTo(x+6,y-8);ctx.fill();ctx.strokeStyle='rgba(233,229,216,.5)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y-10,10,0,7);ctx.stroke();};
+      this.eng.bind();
+    }
+    this.eng.resize();this.eng.draw();
+    document.getElementById('plantConfirm').classList.remove('show');
+    document.getElementById('pinHint').style.display='none';
+  },
+  pick(ll){
+    Onboard.lat=ll.lat;Onboard.lng=ll.lng;Onboard.loc=nearestPlace(ll.lat,ll.lng);
+    this.eng.pin={lat:ll.lat,lng:ll.lng};this.eng.draw();
+    document.getElementById('pcLoc').textContent=Onboard.loc;
+    document.getElementById('plantConfirm').classList.add('show');
+  },
+  drawPin(){if(this.eng&&this.eng.pin)this.eng.draw();},
+  zoomBy(f){this.eng.zoomBy(f);}
+};
+/* ============================================================ ACCOUNT (prototype: in-memory, no real backend) ============================================================ */
+const Account={
+  mode:'create',      // 'create' | 'signin'
+  returnTo:null,      // where to go after success ('home' if saving a planted tree)
+  open(mode,returnTo){
+    this.mode=mode||'create';this.returnTo=returnTo||null;
+    this.renderMode();
+    document.getElementById('acError').textContent='';
+    // prefill name from onboarding if we have it
+    if(Onboard.name&&!document.getElementById('acName').value)document.getElementById('acName').value=Onboard.name;
+    show('s-account');
+    setTimeout(()=>document.getElementById(this.mode==='signin'?'acEmail':'acName').focus(),300);
+  },
+  renderMode(){
+    const signin=this.mode==='signin';
+    document.getElementById('acEyebrow').textContent=signin?'Welcome back':(this.returnTo?'Save your forest':'Join the forest');
+    document.getElementById('acTitle').textContent=signin?'Sign in':'Create your account';
+    document.getElementById('acBlurb').textContent=signin
+      ? 'Sign in to return to your grove.'
+      : (this.returnTo?'Your tree is planted. Create an account to keep it growing while you\u2019re away.':'Create an account to start your forest.');
+    document.getElementById('acName').style.display=signin?'none':'';
+    document.getElementById('acName').previousElementSibling.style.display=signin?'none':'';
+    document.getElementById('acSubmit').textContent=signin?'Sign in':'Create account';
+    document.getElementById('acToggle').textContent=signin?'Create a new account':'I already have an account';
+    document.getElementById('acPass').setAttribute('autocomplete',signin?'current-password':'new-password');
+    // only offer "maybe later" when there's something to save (post-plant)
+    document.getElementById('acSkip').style.display=this.returnTo?'':'none';
+  },
+  toggleMode(){this.mode=this.mode==='signin'?'create':'signin';this.renderMode();document.getElementById('acError').textContent='';},
+  err(m){document.getElementById('acError').textContent=m;},
+  submit(){
+    const name=document.getElementById('acName').value.trim();
+    const email=document.getElementById('acEmail').value.trim().toLowerCase();
+    const pass=document.getElementById('acPass').value;
+    if(!email||!/.+@.+\..+/.test(email))return this.err('Enter a valid email.');
+    if(pass.length<6)return this.err('Password must be at least 6 characters.');
+    if(this.mode==='create'){
+      if(!name)return this.err('What should we call you?');
+      if(ACCOUNTS[email])return this.err('That email already has an account. Try signing in.');
+      ACCOUNTS[email]={name,email,pass};
+      this.signInAs(name,email,false);
+    } else {
+      const acc=ACCOUNTS[email];
+      if(!acc||acc.pass!==pass)return this.err('Email or password doesn\u2019t match.');
+      this.signInAs(acc.name,email,true);
+    }
+  },
+  signInAs(name,email,returning){
+    const wasGuestWithSeeds=ME.isGuest&&State.trees.length&&State.seeds>=SECOND_TREE_COST;
+    ME.name=name;ME.email=email;ME.isGuest=false;
+    if(State.trees.length){
+      App.enterHome(true);
+      Toast.show(returning?('Welcome back, '+name+'.'):('Your forest is saved, '+name+'. \uD83C\uDF31'),2600);
+      if(wasGuestWithSeeds)setTimeout(()=>{App.nav('grove');Toast.show('Your grove is unlocked \u2014 plant your next tree. 🌱',2600);},900);
+    } else {
+      show('s-species');Onboard.go('species');
+      Toast.show(returning?('Welcome back, '+name+'. Plant a tree to begin.'):('Welcome, '+name+'.'),2600);
+    }
+  },
+  skip(){ // continue as guest, keep the planted tree in this session
+    if(State.trees.length)App.enterHome(true);
+    else show('s-welcome');
+    Toast.show('Playing as guest \u2014 your tree lives on this device.',2600);
+  },
+  signOut(){
+    Profile.close();
+    ME.name='You';ME.email=null;ME.isGuest=true;
+    State.trees=[];State.seeds=0;State.water=3;State.active=0;State.lastCheckinDay=-1;State.streak=0;
+    Onboard.name='';Onboard.lat=null;Onboard.lng=null;
+    document.getElementById('acName').value='';document.getElementById('acEmail').value='';document.getElementById('acPass').value='';
+    show('s-welcome');
+    Toast.show('Signed out.');
+  }
+};
+
+/* ============================================================ APP ============================================================ */
+const App={
+  boot(){Onboard.init();seedAmbient();buildNavs();updateDevDay();},
+  enterHome(keep){if(!keep){State.seeds=0;State.water=3;}show('s-home');this.render();if(!keep)Toast.show('Your tree is planted. 🌱');},
+  finishPlanting(){
+    // First tree is free for everyone — guests start playing immediately.
+    // The account gate lives at the SECOND tree (in the Grove), so nothing
+    // interrupts the first-tree magic.
+    this.enterHome();
+  },
+  onTimeChange(){updateDevDay();State.trees.forEach(recordMilestones);this.render();if(currentScreen==='s-grove')this.renderGrove();if(currentScreen==='s-map')Forest.draw();},
+  render(){
+    const t=State.tree;if(!t)return;
+    document.getElementById('homeStage').innerHTML=renderTree(t);
+    document.getElementById('homeName').textContent=t.name;
+    const si=stageInfo(t),d=ageDaysInt(t);
+    document.getElementById('homeMeta').textContent=`${SPECIES[t.species].name} · ${d} day${d===1?'':'s'} old · ${t.loc}`;
+    document.getElementById('homeGlyph').textContent=si.glyph;
+    document.getElementById('homeStageLabel').textContent=si.label+(si.tier?'':' Stage');
+    const h=recomputeHealth(t);document.getElementById('homeHealth').style.width=h+'%';
+    document.getElementById('homeHealth').style.background=h<45?'var(--danger)':'var(--moss)';
+    document.getElementById('healthWord').textContent=healthWord(h);document.getElementById('healthPct').textContent=h+'%';
+    document.getElementById('seedCount').textContent=State.seeds;document.getElementById('waterCount').textContent=State.water;
+    document.getElementById('mapSeed').textContent=State.seeds;
+    const today=Math.floor(Clock.now()/DAY),btn=document.getElementById('checkinBtn');
+    if(State.lastCheckinDay===today){btn.textContent='✓ Checked in today';btn.disabled=true;}else{btn.textContent='Check in today';btn.disabled=false;}
+    const hr=new Date(Clock.now()).getHours();const salut=(hr<12?'Good morning':hr<18?'Good afternoon':'Good evening');document.getElementById('greeting').textContent=ME.isGuest?salut:(salut+', '+ME.name);
+    document.getElementById('waterBtn').disabled=State.water<=0;
+  },
+  checkin(){
+    const today=Math.floor(Clock.now()/DAY);if(State.lastCheckinDay===today)return;
+    if(State.lastCheckinDay===today-1)State.streak++;else State.streak=1;State.lastCheckinDay=today;
+    let gained=1,msg='seed';if(State.streak%3===0){gained+=2;msg='seeds · streak!';}
+    State.seeds+=gained;State.water=Math.min(9,State.water+1);
+    State.trees.forEach(tr=>{tr.lastVisit=Clock.now();tr.health=Math.min(100,tr.health+15);});
+    Toast.seeds(gained,msg);this.render();
+    if(State.trees.length===1&&State.seeds>=SECOND_TREE_COST&&State.seeds-gained<SECOND_TREE_COST){
+      const msg=ME.isGuest?'You\u2019ve earned a second tree. Create an account to plant it. 🌱':'You have enough seeds to plant again. 🌱';
+      setTimeout(()=>Toast.show(msg,2800),1400);
+    }
+  },
+  water(){const t=State.tree;if(State.water<=0)return;State.water--;t.lastVisit=Clock.now();t.health=Math.min(100,t.health+22);t.events.push({t:Clock.now(),ev:"Watered",glyph:"💧"});Toast.show('You watered '+t.name+'. 💧');this.render();},
+  nav(where){if(where==='me'){Profile.open('me');return;}document.querySelectorAll('.nav').forEach(n=>n.classList.toggle('active',n.dataset.nav===where));if(where==='home'){show('s-home');this.render();}if(where==='grove'){show('s-grove');this.renderGrove();}if(where==='map'){show('s-map');Forest.init();}},
+  renderGrove(){
+    const grid=document.getElementById('groveGrid');grid.innerHTML='';let totalDays=0;
+    State.trees.forEach((t,i)=>{const d=ageDaysInt(t);totalDays+=d;const si=stageInfo(t);const card=document.createElement('div');card.className='grovecard';card.innerHTML=`<div class="mini">${renderTree(t)}</div><div class="gname serif">${t.name}</div><div class="gmeta">${SPECIES[t.species].name} · ${d}d</div><div class="gtier">${si.glyph} ${si.label}</div>`;card.onclick=()=>{State.active=i;Journal.open(t);};grid.appendChild(card);});
+    const hasSeeds=State.seeds>=SECOND_TREE_COST;const canPlant=hasSeeds&&!ME.isGuest;const add=document.createElement('div');add.className='grovecard add';
+    if(canPlant){
+      add.innerHTML=`<div style="font-size:30px">＋</div><div style="font-size:12px;margin-top:6px">Plant a tree<br><span style="color:var(--gold)">${SECOND_TREE_COST} seeds</span></div>`;
+      add.onclick=()=>PlantMore.open();
+    } else if(hasSeeds&&ME.isGuest){
+      add.innerHTML=`<div style="font-size:24px">🌱</div><div style="font-size:11px;margin-top:8px;line-height:1.45">You\u2019ve earned a second tree.<br><span style="color:var(--moss)">Create an account to grow your grove.</span></div>`;
+      add.onclick=()=>Account.open('create','home');
+    } else {
+      add.innerHTML=`<div style="font-size:26px;opacity:.6">🔒</div><div style="font-size:11px;margin-top:8px;line-height:1.4">Earn ${SECOND_TREE_COST-State.seeds} more seed${SECOND_TREE_COST-State.seeds===1?'':'s'}<br>to plant again</div>`;
+    }
+    grid.appendChild(add);
+    document.getElementById('groveTitle').textContent='Your Grove';
+    document.getElementById('groveSub').textContent=`${State.trees.length} tree${State.trees.length===1?'':'s'} · ${totalDays} days of growth`;
+  }
+};
+function buildNavs(){
+  const tpl=who=>`
+    <button class="nav ${who==='home'?'active':''}" data-nav="home" onclick="App.nav('home')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3v18M12 8c-3-4-7-2-7-2s0 5 7 5M12 8c3-4 7-2 7-2s0 5-7 5"/></svg>Tree</button>
+    <button class="nav ${who==='grove'?'active':''}" data-nav="grove" onclick="App.nav('grove')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M7 21V9M7 9c-2 0-4-1-4-3s2-3 4-3 4 1 4 3M17 21V11M17 11c2 0 4-1 4-3s-2-3-4-3"/></svg>Grove</button>
+    <button class="nav ${who==='map'?'active':''}" data-nav="map" onclick="App.nav('map')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></svg>Forest</button>`;
+  document.getElementById('navHome').innerHTML=tpl('home');
+  document.getElementById('navGrove').innerHTML=tpl('grove');
+  document.getElementById('navMap').innerHTML=tpl('map');
+}
+
+let currentScreen='s-welcome';
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');currentScreen=id;}
+
+function recordMilestones(t){const d=ageDaysInt(t);const mark=(k,c,ev,g)=>{if(c&&!t.milestonesHit[k]){t.milestonesHit[k]=true;t.events.push({t:Clock.now(),ev,glyph:g,day:d});}};mark('sapling',d>=3,'Became a sapling','🌿');mark('mature',d>=7,'Reached maturity','🌳');mark('d30',d>=30,'30 days old','🌳');mark('d100',d>=100,'100 days — became an Old tree','🌳');mark('d365',d>=365,'One year old — now Ancient','🌲');mark('d1000',d>=1000,'1,000 days — Legendary','🌲');}
+
+const PlantMore={open(){const key=pickUnlockedSpecies();const name=prompt('Name your new tree','Bob');if(name===null)return;if(State.seeds<SECOND_TREE_COST)return;State.seeds-=SECOND_TREE_COST;const base=State.tree;const t=makeTree(key,name||'Bob',base.lat+ (Math.random()-0.5)*1.5,base.lng+(Math.random()-0.5)*1.5,base.loc,Clock.now(),'me');State.trees.push(t);State.active=State.trees.length-1;Toast.show('Planted '+t.name+'. Your grove grows. 🌱',2600);App.nav('grove');}};
+function pickUnlockedSpecies(){const u=Object.keys(SPECIES).filter(k=>{const s=SPECIES[k];return s.free||(s.unlockAt&&State.trees.length>=s.unlockAt);});return u[Math.floor(Math.random()*u.length)];}
+
+/* ---------- Journal / Inspect ---------- */
+const Journal={
+  cur:null,
+  open(t,isOther){
+    this.cur=t;
+    document.getElementById('jMini').innerHTML=renderTree(t);
+    document.getElementById('jName').textContent=t.name;
+    document.getElementById('jSub').textContent=`${SPECIES[t.species].name} · ${t.loc}`;
+    const d=ageDaysInt(t),si=stageInfo(t),h=recomputeHealth(t),height=Math.round(4+growthT(t)*180+ageFactor(t)*120);
+    const owner=t.ownerId==='me'?ME:userFor(t.ownerId);
+    document.getElementById('jOwnerName').textContent=t.ownerId==='me'?(ME.isGuest?'You':ME.name):owner.name;
+    document.getElementById('jOwnerBtn').onclick=()=>Profile.open(t.ownerId);
+    // other trees don't expose health; show reactions instead
+    document.getElementById('jStats').innerHTML=
+      stat('Age',d+' days')+stat('Stage',si.glyph+' '+si.label)+stat('Height',height+' cm')+
+      (isOther?stat('Admired',(t.reactions||0)+' 🌱'):stat('Health',h+'%'))+
+      stat('Planted',fmtDate(t.plantedAt))+stat('Location',t.loc);
+    const react=document.getElementById('jReact');
+    if(isOther){react.style.display='block';react.textContent=`🌱 Nice tree · ${t.reactions||0}`;react.onclick=()=>{t.reactions=(t.reactions||0)+1;react.textContent=`🌱 Admired · ${t.reactions}`;Toast.show('You admired '+t.name+'.');};}
+    else react.style.display='none';
+    const tl=document.getElementById('jTimeline');document.getElementById('jTlHead').textContent=isOther?'A glimpse of its life':'Life so far';
+    tl.innerHTML='';
+    if(isOther){ // synthesize a short public timeline for other trees
+      const evs=[{t:t.plantedAt,ev:'Planted',glyph:'🌱'}];if(d>=7)evs.push({t:t.plantedAt+7*DAY,ev:'Reached maturity',glyph:'🌳'});if(d>=365)evs.push({t:t.plantedAt+365*DAY,ev:'Turned one year old',glyph:'🌲'});
+      evs.reverse().forEach(e=>tl.innerHTML+=`<li><div class="tl-date">${fmtDate(e.t)}</div><div class="tl-ev">${e.glyph} ${e.ev}</div></li>`);
+    } else {[...t.events].reverse().forEach(e=>tl.innerHTML+=`<li><div class="tl-date">${fmtDate(e.t)}</div><div class="tl-ev">${e.glyph||''} ${e.ev}</div></li>`);}
+    document.getElementById('journal').classList.add('active');
+  },
+  close(){document.getElementById('journal').classList.remove('active');}
+};
+function stat(k,v){return `<div class="jstat"><div class="k">${k}</div><div class="v">${v}</div></div>`;}
+function fmtDate(t){return new Date(t).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}
+document.getElementById('journal').addEventListener('click',e=>{if(e.target.id==='journal')Journal.close();});
+
+/* ---------- Profile (user stats) ---------- */
+const Profile={
+  open(ownerId){
+    const isMe=ownerId==='me';
+    const owner=isMe?ME:userFor(ownerId);
+    const trees=isMe?State.trees:AMBIENT.filter(t=>t.ownerId===ownerId);
+    document.getElementById('pAvatar').textContent=isMe?'🌱':owner.glyph;
+    document.getElementById('pName').textContent=isMe?ME.name:owner.name;
+    document.getElementById('pJoined').textContent=isMe
+      ? (ME.isGuest?'Guest · not saved yet':(ME.email+' · since '+ME.joinYear))
+      : ('Planting since '+(owner.joinYear||2026));
+    const pso=document.getElementById('pSignOut');
+    if(isMe&&!ME.isGuest){pso.style.display='block';pso.textContent='Sign out';}
+    else if(isMe&&ME.isGuest){pso.style.display='block';pso.textContent='Create an account to save';pso.onclick=()=>{Profile.close();Account.open('create','home');};}
+    else pso.style.display='none';
+    if(isMe&&!ME.isGuest)pso.onclick=()=>Account.signOut();
+    const totalDays=trees.reduce((s,t)=>s+ageDaysInt(t),0);
+    const oldest=trees.reduce((m,t)=>Math.max(m,ageDaysInt(t)),0);
+    const ancient=trees.filter(t=>ageDaysInt(t)>=365).length;
+    const admired=trees.reduce((s,t)=>s+(t.reactions||0),0);
+    document.getElementById('pStats').innerHTML=
+      stat('Trees',trees.length)+stat('Oldest',oldest+' days')+
+      stat('Total growth',totalDays+' days')+stat(isMe?'Species':'Ancient trees',isMe?new Set(trees.map(t=>t.species)).size:ancient)+
+      stat('Regions',new Set(trees.map(t=>t.loc)).size)+stat('Admiration',admired+' 🌱');
+    const grid=document.getElementById('pGrove');grid.innerHTML='';
+    document.getElementById('pGroveHead').textContent=isMe?'Your grove':'Their grove';
+    trees.slice(0,12).forEach(t=>{const d=ageDaysInt(t);const el=document.createElement('div');el.className='pt';el.innerHTML=`<div class="mini">${renderTree(t)}</div><div class="pn serif">${t.name}</div><div class="pa">${d}d</div>`;el.onclick=()=>{Profile.close();Journal.open(t,!isMe);};grid.appendChild(el);});
+    if(!trees.length)grid.innerHTML='<div style="color:var(--bone-dim);font-size:13px;grid-column:1/-1;text-align:center;padding:16px">No trees yet.</div>';
+    document.getElementById('profile').classList.add('active');
+  },
+  close(){document.getElementById('profile').classList.remove('active');}
+};
+document.getElementById('profile').addEventListener('click',e=>{if(e.target.id==='profile')Profile.close();});
+
+/* ---------- Toast ---------- */
+const Toast={t:null,show(m,d=2000){const el=document.getElementById('toast');el.innerHTML=m;el.classList.add('show');clearTimeout(this.t);this.t=setTimeout(()=>el.classList.remove('show'),d);},seeds(n,tail){this.show(`<span class="amt">+${n}</span> ${tail}`);}};
+
+/* ============================================================ FOREST MAP ============================================================ */
+const Forest={
+  eng:null,ready:false,
+  init(){
+    if(!this.ready){
+      this.eng=makeMapEngine('forestCanvas',{startLng:-83,startLat:42.3,startZoom:8,
+        drawTrees:(e,ctx)=>this.drawTrees(e,ctx),
+        onTap:(ll,px,py)=>this.tap(ll,px,py)});
+      this.eng.bind();this.ready=true;
+    }
+    this.eng.resize();this.eng.draw();
+  },
+  allTrees(){return [...AMBIENT,...State.trees];},
+  drawTrees(e,ctx){
+    const z=e.zoom;const trees=this.allTrees();
+    if(z<4){ // cluster into density blobs
+      const buckets={};trees.forEach(t=>{const k=Math.round(t.lat/6)+'_'+Math.round(t.lng/6);(buckets[k]=buckets[k]||[]).push(t);});
+      Object.values(buckets).forEach(arr=>{
+        const mlat=arr.reduce((s,t)=>s+t.lat,0)/arr.length,mlng=arr.reduce((s,t)=>s+t.lng,0)/arr.length;
+        const X=e.sx(mlng),Y=e.sy(mlat);if(X<-30||X>e.w+30||Y<-30||Y>e.h+30)return;
+        const rad=8+Math.sqrt(arr.length)*3;
+        const grd=ctx.createRadialGradient(X,Y,0,X,Y,rad);grd.addColorStop(0,'rgba(143,181,122,0.55)');grd.addColorStop(1,'rgba(143,181,122,0)');
+        ctx.fillStyle=grd;ctx.beginPath();ctx.arc(X,Y,rad,0,7);ctx.fill();
+        ctx.fillStyle='#DCE9D2';ctx.font='11px Inter';ctx.textAlign='center';ctx.fillText(arr.length,X,Y+4);
+        if(arr.some(t=>t.ownerId==='me')){ctx.fillStyle=getCss('--gold');ctx.font='10px Inter';ctx.fillText('★ you',X,Y-rad-5);}
+      });
+    } else { // individual trees
+      trees.forEach(t=>{
+        const X=e.sx(t.lng),Y=e.sy(t.lat);if(X<-20||X>e.w+20||Y<-20||Y>e.h+20)return;
+        const mine=t.ownerId==='me';const age=Math.min(1,ageDays(t)/365);
+        const s=(1.5+age*2.4)*Math.min(3,z*0.32);
+        ctx.strokeStyle='#4A3B2E';ctx.lineWidth=Math.max(1,s*0.45);ctx.beginPath();ctx.moveTo(X,Y);ctx.lineTo(X,Y-s*2.2);ctx.stroke();
+        ctx.fillStyle=mine?'#B7D89E':`hsl(${95+age*20},34%,${38+age*14}%)`;ctx.beginPath();ctx.arc(X,Y-s*2.6,s*(1.6+age),0,7);ctx.fill();
+        if(mine){ctx.strokeStyle=getCss('--gold');ctx.lineWidth=1.4;ctx.beginPath();ctx.arc(X,Y-s*2.6,s*(1.6+age)+3,0,7);ctx.stroke();ctx.fillStyle='#E9E5D8';ctx.font='11px Inter';ctx.textAlign='center';ctx.fillText(t.name,X,Y-s*2.6-s*(1.6+age)-6);}
+      });
+    }
+    this.updateStats();
+  },
+  tap(ll,px,py){
+    // hit test nearest tree within pixel radius (only when individuals shown)
+    if(this.eng.zoom<4){this.eng.zoomBy(2.2, px, py);return;} // zoom in on cluster tap
+    let best=null,bd=26*26;
+    this.allTrees().forEach(t=>{const X=this.eng.sx(t.lng),Y=this.eng.sy(t.lat);const age=Math.min(1,ageDays(t)/365);const s=(1.5+age*2.4)*Math.min(3,this.eng.zoom*0.32);const cyY=Y-s*2.6;const d=(X-px)**2+(cyY-py)**2;if(d<bd){bd=d;best=t;}});
+    if(best)Journal.open(best, best.ownerId!=='me');
+  },
+  updateStats(){
+    const all=this.allTrees();const total=all.length+2481900;
+    document.getElementById('statTrees').textContent=total.toLocaleString();
+    document.getElementById('statGrowing').textContent=(84200+all.filter(t=>ageDays(t)<7).length).toLocaleString();
+    document.getElementById('statAncient').textContent=(182400+all.filter(t=>ageDays(t)>=365).length).toLocaleString();
+  },
+  zoomBy(f){this.eng.zoomBy(f);},
+  flyToMine(){const t=State.tree;if(!t)return;this.eng.cx=t.lng;this.eng.cy=t.lat;this.eng.zoom=Math.max(this.eng.zoom,10);this.eng.clamp();this.eng.draw();Toast.show('Here is your grove. 📍');}
+};
+window.addEventListener('resize',()=>{if(currentScreen==='s-map'&&Forest.eng){Forest.eng.resize();Forest.eng.draw();}if(currentScreen==='s-plantmap'&&PlantMap.eng){PlantMap.eng.resize();PlantMap.eng.draw();PlantMap.drawPin();}});
+
+/* ---------- dev ---------- */
+function updateDevDay(){const t=State.tree;document.getElementById('devday').textContent=t?ageDaysInt(t):0;}
+document.getElementById('warp1').onclick=()=>Clock.warp(1);
+document.getElementById('warp30').onclick=()=>Clock.warp(30);
+document.getElementById('warp365').onclick=()=>Clock.warp(365);
+document.getElementById('warpBack').onclick=()=>Clock.warp(-1);
+
+App.boot();
+</script>
+</body>
+</html>
