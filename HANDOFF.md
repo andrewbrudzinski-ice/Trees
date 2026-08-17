@@ -1,9 +1,20 @@
 # Handoff — continuing The Tree in a fresh session
 
-This branch (`claude/the-tree-foundation-vkpyus`) carries **Step 1 (Foundation)**
-complete. It was built and pushed from a session whose network policy blocked
-Supabase, so the **live** end-to-end test still needs to run. A fresh session in
-an environment allowed to reach `*.supabase.co` can do that in one command.
+**Step 1 (Foundation) is complete and now LIVE-VERIFIED.** On 2026-08-17, in a
+session allowed to reach `*.supabase.co`, `node scripts/verify-step1.mjs` passed
+end to end against the real project: anonymous ("guest") sign-in ✅, profile
+auto-created by the trigger (`is_guest=true, seeds=0, water=3`) ✅, and RLS
+blocking cross-user reads ✅. Work continues on `claude/tree-step1-verify-ptdymu`
+(based on the original `claude/the-tree-foundation-vkpyus`).
+
+Two setup notes learned during that verification:
+- The Supabase project needs **anonymous sign-ins enabled** (Authentication →
+  Sign In / Providers) — the migration can't toggle this; it's a dashboard switch.
+- In Claude Code web sessions, outbound HTTPS goes through an egress proxy. The
+  verify script now self-re-execs with `NODE_USE_ENV_PROXY=1` when `HTTPS_PROXY`
+  is set, so `node scripts/verify-step1.mjs` works both in web sessions and on a
+  plain local machine. The environment's network policy must still permit
+  `*.supabase.co`.
 
 ## Working agreement (from the project kickoff)
 

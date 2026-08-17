@@ -11,8 +11,27 @@
 //   NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY
 //
 // Requires this environment to be allowed to reach *.supabase.co (see HANDOFF.md).
+//
+// Proxy note: in Claude Code web sessions outbound HTTPS goes through an egress
+// proxy (HTTPS_PROXY). Node's built-in fetch — which supabase-js uses — ignores
+// that variable by default, so without help it connects directly, gets blocked,
+// and surfaces a garbled non-JSON error. NODE_USE_ENV_PROXY=1 makes Node honor
+// HTTPS_PROXY for fetch, but it must be set at process start, so when a proxy is
+// configured and the flag isn't set we re-exec ourselves once with it. No-op on a
+// plain local machine (no HTTPS_PROXY), so `node scripts/verify-step1.mjs` still
+// just works there.
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { createClient } from "@supabase/supabase-js";
+
+if ((process.env.HTTPS_PROXY || process.env.https_proxy) && process.env.NODE_USE_ENV_PROXY !== "1") {
+  const { spawnSync } = await import("node:child_process");
+  const res = spawnSync(process.execPath, ["--no-warnings", fileURLToPath(import.meta.url), ...process.argv.slice(2)], {
+    stdio: "inherit",
+    env: { ...process.env, NODE_USE_ENV_PROXY: "1" },
+  });
+  process.exit(res.status ?? 1);
+}
 
 function loadEnv() {
   const out = { ...process.env };
@@ -45,9 +64,10 @@ if (!url || !key) {
 console.log("URL:", url);
 console.log("Key:", key.slice(0, 20) + "…\n");
 
-const supabase = createClient(url, key, {
-  auth: { persistSession: false, autoRefreshToken: false },
-});
+if (process.env.NODE_USE_ENV_PROXY === "1") console.log("Proxy: via HTTPS_PROXY\n");
+
+const clientOpts = { auth: { persistSession: false, autoRefreshToken: false } };
+const supabase = createClient(url, key, clientOpts);
 
 let failures = 0;
 function ok(label, cond, extra = "") {
@@ -86,7 +106,7 @@ if (profile) {
 }
 
 // 3. RLS negative check: a second, unrelated guest must NOT see the first's row.
-const other = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+const other = createClient(url, key, clientOpts);
 await other.auth.signInAnonymously();
 const { data: leaked } = await other.from("profiles").select("*").eq("id", uid).maybeSingle();
 ok("RLS blocks reading another user's profile", leaked === null, leaked ? "→ LEAKED!" : "");
