@@ -69,3 +69,17 @@ Open <http://localhost:3000>:
 
 You can confirm the row server-side too: **Table Editor → profiles** shows one
 row per guest you created, each with `is_guest = true`.
+
+---
+
+## Step 2 (Tree model) — one more migration
+
+When you move to Step 2, apply the next migration the same way:
+
+1. **SQL Editor → New query**, paste all of
+   `supabase/migrations/0002_tree_model.sql`, and **Run**. It adds the `species`
+   catalog (seeded), `trees`, and `tree_events`, with owner-scoped RLS. It's
+   additive and idempotent — safe to re-run.
+2. No new dashboard toggles are needed; anonymous auth from Step 1 already covers
+   guests.
+3. Verify: `node scripts/verify-step2.mjs` → should end with "🌳 Step 2 verified".

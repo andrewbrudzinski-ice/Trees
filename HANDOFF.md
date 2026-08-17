@@ -61,15 +61,48 @@ Two setup notes learned during that verification:
   screen at `src/app/page.tsx`.
 - Design tokens + fonts (Fraunces/Inter) ported from the prototype.
 
-## Next — Step 2: Tree model + growth math (spec §9–11, roadmap §17.2)
+## Step 2 — Tree model + growth math (spec §9–11, roadmap §17.2) — BUILT
 
-- `trees` and `tree_events` tables (schema in spec §8), additive migration
-  `supabase/migrations/0002_*.sql`.
-- Server-authoritative growth/age/health as pure functions, ported from the
-  prototype's `growthT` / `ageFactor` / `stageInfo` / `recomputeHealth`
-  (spec §9–11) — **with unit tests** (these need no network).
-- **Dev-only time-warp** endpoint so a 7-day loop is testable (spec §11 note,
-  §2 "Dev time-warp is a first-class dev tool").
+Offline-verified (unit tests + typecheck + `next build` all green). The live
+schema check needs migration `0002` applied first (see below).
 
-Keep balances/age/health derived server-side; the client requests render state,
-never computes it.
+- **Migration `supabase/migrations/0002_tree_model.sql`**: `species` (seeded with
+  maple/oak/pine free + cherry/birch/willow locked), `trees`, and append-only
+  `tree_events`, with owner-scoped RLS and the GIST geo index. Public inspect/map
+  views stay deferred to their own roadmap steps (§7/§8), matching 0001's pattern.
+- **Growth math** — `src/lib/tree/growth.ts`: pure, server-authoritative
+  functions of timestamps — `ageDays`, `growth` (g), `stage`, `ageFactor`,
+  `ageTier`, `health`, and `computeTreeState` (the render state the client
+  requests). Unit-tested in `src/lib/tree/growth.test.ts` (**17 tests, `npm test`
+  via vitest**; no network needed).
+- **Dev-only time-warp** — `src/app/api/dev/time-warp/route.ts`: 404 outside
+  development. `POST {create:true}` plants a quick dev tree; `POST {days,treeId?}`
+  ages a tree by moving `planted_at`/care timestamps *backwards in real server
+  time* (server still owns the clock — no faked `now`, nothing trusted from the
+  client). `GET` lists your trees with derived state.
+
+### Decision recorded: `ageFactor` cap (spec §10 internal contradiction)
+
+§10's literal formula caps `ageFactor` at ~2.6, which **saturates at day 188** —
+so every tree from ~6 months to Elder (day 2000) would look identical. That
+contradicts §10's own "grows slowly and indefinitely" and §17.3's "7/365/2000
+must keep diverging". **Resolution (confirmed with the product owner):** keep the
+spec's ×1.15 multiplier, raise the cap to `MAX_AGE_FACTOR = 4.0` so the whole
+named lifespan stays on the diverging part of the curve (Elder ≈ 3.80, unclipped).
+
+### To verify Step 2 live (after Step 1)
+
+1. Apply `supabase/migrations/0002_tree_model.sql` in the Supabase SQL editor
+   (same as 0001; idempotent). No new dashboard toggles — anonymous auth from
+   Step 1 is all that's needed.
+2. `node scripts/verify-step2.mjs` → expects the species catalog readable, a
+   guest planting a tree + logging an event, and RLS blocking a second guest from
+   reading or forging into the first's tree, ending "🌳 Step 2 verified".
+
+## Next — Step 3: Procedural renderer (roadmap §17.3)
+
+Port the prototype's `renderTree()` to a typed module producing SVG from
+`(species, g, ageFactor, health, visual_seed)`; wire `species.render_params`;
+verify a 7-day, 365-day, and 2000-day tree each read distinctly (the `ageFactor`
+curve above is what makes that possible). Keep age/growth/health derived
+server-side; the client requests render state, never computes it.
