@@ -18,6 +18,8 @@ export function Grove({
   onPlantSlot,
   onCreateAccount,
   onSignOut,
+  onOpenTree,
+  onOpenProfile,
   busy,
 }: {
   payload: Extract<HomePayload, { authed: true }>;
@@ -25,6 +27,8 @@ export function Grove({
   onPlantSlot: () => void;
   onCreateAccount: () => void;
   onSignOut: () => void;
+  onOpenTree: (treeId: string) => void;
+  onOpenProfile: () => void;
   busy: boolean;
 }) {
   const trees = payload.trees;
@@ -38,12 +42,12 @@ export function Grove({
   return (
     <div className="grove">
       <header className="grove-head">
-        <div>
+        <button className="grove-head-id" onClick={onOpenProfile}>
           <h1 className="grove-title serif">Your grove</h1>
           <p className="grove-sub">
-            {trees.length} tree{trees.length === 1 ? "" : "s"} · 🌱 {seeds}
+            {trees.length} tree{trees.length === 1 ? "" : "s"} · 🌱 {seeds} · view profile ›
           </p>
-        </div>
+        </button>
         {isGuest ? (
           <button className="chip-btn" onClick={onCreateAccount} disabled={busy}>
             Create account
@@ -59,7 +63,7 @@ export function Grove({
         {trees.map(({ tree, state }) => {
           const chip = state.tier ?? state.stage;
           return (
-            <div className="grove-card" key={tree.id}>
+            <button className="grove-card" key={tree.id} onClick={() => onOpenTree(tree.id)}>
               <TreeSvg tree={tree} state={state} species={speciesByKey.get(tree.species_key)} className="grove-mini" />
               <div className="gname serif">{tree.name}</div>
               <div className="gmeta">
@@ -68,7 +72,7 @@ export function Grove({
               <div className="gtier">
                 {chip.glyph} {state.tier ? state.tier.label : state.stage.label}
               </div>
-            </div>
+            </button>
           );
         })}
 

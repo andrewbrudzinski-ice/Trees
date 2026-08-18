@@ -119,3 +119,13 @@ When you move to Step 2, apply the next migration the same way:
    carry over with no data migration). Production can re-enable confirmation later
    with a "check your email" step.
 3. Verify: `node scripts/verify-step6.mjs` → should end with "🌲 Step 6 verified".
+
+---
+
+## Step 7 (Inspect + profiles + admire) — one migration
+
+1. **SQL Editor → New query**, paste all of `supabase/migrations/0006_social.sql`,
+   and **Run**. It adds `tree_reactions` and the public views `tree_inspect`,
+   `tree_public_events`, `profile_public`. Additive and idempotent.
+2. No new dashboard toggles.
+3. Verify: `node scripts/verify-step7.mjs` → should end with "🌿 Step 7 verified".

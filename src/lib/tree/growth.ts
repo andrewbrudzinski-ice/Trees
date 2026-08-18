@@ -178,6 +178,14 @@ export function restoreHealth(current: number, amount: number): number {
   return Math.min(HEALTH_MAX, current + amount);
 }
 
+/**
+ * A whimsical "height" for display, derived from growth + age (spec §7 Inspect
+ * shows height). Purely cosmetic; ported from the prototype's formula.
+ */
+export function heightCm(g: number, factor: number): number {
+  return Math.round(4 + g * 180 + factor * 120);
+}
+
 /** Human word for a health value (matches the prototype's thresholds). */
 export function healthWord(h: number): string {
   if (h >= 90) return "Thriving";
@@ -197,6 +205,7 @@ export type TreeRenderState = {
   stage: Stage;
   ageFactor: number;
   tier: AgeTier | null;
+  heightCm: number;
   health: number;
   healthWord: string;
 };
@@ -213,15 +222,18 @@ export function computeTreeState(
   const nowMs = toMs(now);
   const planted = input.planted_at;
   const h = health(input, nowMs);
+  const g = growth(planted, nowMs);
+  const factor = ageFactor(planted, nowMs);
   return {
     ageMs: ageMs(planted, nowMs),
     ageDays: ageDays(planted, nowMs),
     ageDaysInt: ageDaysInt(planted, nowMs),
-    growth: growth(planted, nowMs),
+    growth: g,
     stageIndex: stageIndex(planted, nowMs),
     stage: stage(planted, nowMs),
-    ageFactor: ageFactor(planted, nowMs),
+    ageFactor: factor,
     tier: ageTier(planted, nowMs),
+    heightCm: heightCm(g, factor),
     health: h,
     healthWord: healthWord(h),
   };

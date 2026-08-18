@@ -10,6 +10,8 @@ import { Home } from "@/components/Home";
 import { Grove } from "@/components/Grove";
 import { Account } from "@/components/Account";
 import { BottomNav, type Tab } from "@/components/BottomNav";
+import { TreeSheet, type TreeTarget } from "@/components/TreeSheet";
+import { ProfileSheet } from "@/components/ProfileSheet";
 
 /**
  * The Tree — app shell (roadmap Steps 4–6).
@@ -25,6 +27,7 @@ export default function App() {
   const [tab, setTab] = useState<Tab>("home");
   const [plantingSecond, setPlantingSecond] = useState(false);
   const [account, setAccount] = useState<"signup" | "signin" | null>(null);
+  const [sheet, setSheet] = useState<{ type: "tree"; target: TreeTarget } | { type: "profile"; userId: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -127,6 +130,13 @@ export default function App() {
 
   const authed = payload?.authed === true;
   const trees = authed ? payload.trees : [];
+  const myUid = authed ? payload.profile?.id ?? null : null;
+  const selfIsGuest = authed ? payload.profile?.is_guest ?? true : true;
+
+  const openTreeById = (treeId: string) => {
+    const entry = trees.find((e) => e.tree.id === treeId);
+    setSheet({ type: "tree", target: entry ? { kind: "own", entry } : { kind: "inspect", treeId } });
+  };
   const mustPlantFirst = authed && trees.length === 0;
   const showPlant = supabase && authed && (mustPlantFirst || plantingSecond);
 
@@ -179,6 +189,7 @@ export default function App() {
               speciesByKey={speciesByKey}
               onCheckin={checkIn}
               onWater={water}
+              onOpenTree={() => payload.trees[0] && setSheet({ type: "tree", target: { kind: "own", entry: payload.trees[0] } })}
               onDevWarp={devWarp}
               onDevDryOut={devDryOut}
               busy={busy}
@@ -190,6 +201,8 @@ export default function App() {
               onPlantSlot={() => setPlantingSecond(true)}
               onCreateAccount={() => setAccount("signup")}
               onSignOut={signOut}
+              onOpenTree={openTreeById}
+              onOpenProfile={() => myUid && setSheet({ type: "profile", userId: myUid })}
               busy={busy}
             />
           )}
@@ -204,6 +217,36 @@ export default function App() {
           initialMode={account}
           onClose={() => setAccount(null)}
           onDone={onAccountDone}
+        />
+      )}
+
+      {sheet?.type === "tree" && supabase && (
+        <TreeSheet
+          supabase={supabase}
+          target={sheet.target}
+          speciesByKey={speciesByKey}
+          onClose={() => setSheet(null)}
+          onOpenProfile={(userId) => setSheet({ type: "profile", userId })}
+        />
+      )}
+
+      {sheet?.type === "profile" && supabase && (
+        <ProfileSheet
+          supabase={supabase}
+          userId={sheet.userId}
+          isSelf={sheet.userId === myUid}
+          selfIsGuest={selfIsGuest}
+          speciesByKey={speciesByKey}
+          onClose={() => setSheet(null)}
+          onOpenTree={openTreeById}
+          onSignOut={() => {
+            setSheet(null);
+            signOut();
+          }}
+          onCreateAccount={() => {
+            setSheet(null);
+            setAccount("signup");
+          }}
         />
       )}
     </main>

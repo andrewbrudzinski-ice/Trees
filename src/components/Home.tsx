@@ -12,6 +12,7 @@ export function Home({
   speciesByKey,
   onCheckin,
   onWater,
+  onOpenTree,
   onDevWarp,
   onDevDryOut,
   busy,
@@ -20,6 +21,7 @@ export function Home({
   speciesByKey: Map<string, Species>;
   onCheckin: () => void;
   onWater: (treeId: string) => void;
+  onOpenTree: () => void;
   onDevWarp: (days: number) => void;
   onDevDryOut: (days: number) => void;
   busy: boolean;
@@ -48,7 +50,9 @@ export function Home({
         </div>
       </div>
 
-      <TreeSvg tree={tree} state={state} species={species} className="home-stage" />
+      <button className="stage-btn" onClick={onOpenTree} title="Open journal">
+        <TreeSvg tree={tree} state={state} species={species} className="home-stage" />
+      </button>
 
       <div className="home-info">
         <div className="stage-chip">

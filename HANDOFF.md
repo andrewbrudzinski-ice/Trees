@@ -208,11 +208,36 @@ tooling + earlier verify scripts use it), so a determined client could still
 direct-insert a free tree, bypassing `plant_tree`'s cost. Closing that (force all
 plants through the RPC) is on the **Step 9** anti-cheat/RLS-audit list.
 
-## Next — Step 7: Journal + Inspect + Profile + Admire (roadmap §17.7)
+## Step 7 — Journal + Inspect + Profile + Admire (roadmap §17.7) — BUILT
 
-Per-tree **Journal** (own tree: health + full `tree_events` timeline) and public
-**Inspect** of any tree (species, age, stage, planted date, location, admiration
-count — never another user's health or private history); **public profiles**
-(display name, join date, aggregate grove stats); and the **`tree_reactions`**
-admire flow (one per user per tree). Needs a `0006` migration for `tree_reactions`
-+ the public-but-scoped read views (spec §8 "two public-but-scoped read paths").
+Offline-verified (40 unit tests + typecheck + lint + `next build` all green).
+Live check needs migration `0006` applied.
+
+- **Migration `0006_social.sql`**: `tree_reactions` (one admire per user per tree,
+  add/remove-own RLS) and three **SECURITY DEFINER views** exposing only safe
+  columns past the owner-only RLS: `tree_inspect` (species/age-inputs/location +
+  admire count — no health/care), `tree_public_events` (milestone timeline only,
+  never `watered`), `profile_public` (display name + join date, no email/auth).
+- **UI**: `TreeSheet` — Journal for your own tree (health + full timeline) and
+  Inspect for another's (no health, short public timeline, admire button, owner
+  chip). `ProfileSheet` — public profile with aggregate grove stats + a tappable
+  grove grid; your own adds Sign out / create-account. Home tree and Grove cards
+  now open the sheet; the Grove header opens your profile.
+- **Admire** toggles via `tree_reactions` (client insert/delete, RLS-scoped);
+  the public count comes from the `tree_inspect` view.
+- `growth.ts` gained `heightCm`; `events.ts` maps event kinds → label/glyph and
+  marks which are public. `scripts/verify-step7.mjs` proves the public/private
+  split, admire toggle, and profile privacy across two guests.
+
+Reachability note: inspecting *another* user's tree / public profile has no
+in-app entry point until the **Forest map (Step 8)** provides discovery — the
+sheets and public views are built and verified now, and Step 8 wires tree taps to
+them.
+
+## Next — Step 8: Map (roadmap §17.8)
+
+MapLibre GL with a custom minimal forest-ink style; trees as a layer on top;
+low-zoom server-aggregated density, high-zoom individual trees; own trees ringed;
+"📍 My Grove" recenter; tap a tree → the Inspect sheet (already built). Plus an
+ambient/seeded forest for cold-start density. The prototype's hand-typed
+continent canvas is throwaway — this replaces it with real geography.
