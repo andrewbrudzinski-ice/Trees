@@ -178,3 +178,19 @@ queries, **[`../docs/METRICS.md`](../docs/METRICS.md)**.
    in with your account, and tap **Claim owner access** (first claim wins — do it
    before sharing the app widely). You'll then see live user/activity/forest counts.
    Only the owner account can read them.
+
+   ⚠️ Claim from a **real member account**, not a guest session. The claim binds
+   the owner slot to whatever session your browser holds when you tap it — if you
+   haven't signed up yet, that's an anonymous guest. Create your email account
+   first (plant a seed → **Account** → sign up), then sign in on `/admin` and claim.
+
+---
+
+## Clearing test data before launch
+
+The build's `verify-*.mjs` scripts create throwaway guests, trees, and check-ins
+in your project — so a freshly deployed dashboard can show dozens of "users."
+To reset live stats to zero and release the owner slot, run
+`supabase/reset-dev-data.sql` (SQL Editor → New query → paste → Run). It deletes
+**all** users and game data, so only run it before you have real players. Then
+create your account and re-claim `/admin`.
