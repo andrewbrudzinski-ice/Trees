@@ -234,34 +234,43 @@ in-app entry point until the **Forest map (Step 8)** provides discovery — the
 sheets and public views are built and verified now, and Step 8 wires tree taps to
 them.
 
-## Step 8 — The Forest map (roadmap §17.8) — BUILT
+## Step 8 — The Forest map (roadmap §17.8) — BUILT (world-scale reimagining)
 
 Offline-verified (44 unit tests + typecheck + lint + `next build` all green).
 No new migration; reads the public `tree_inspect` view from Step 7.
 
-- **`ForestMap`** (`src/components/ForestMap.tsx`): MapLibre GL with a custom
-  forest-ink style. **Self-contained** — real world geography is embedded from
-  Natural Earth (`world-atlas` via npm, converted with `topojson-client`); **no
-  external tiles, no API keys, no glyphs/sprite**, so it works under the
-  `*.supabase.co`-only network policy. City labels are auto-tracked DOM markers.
-- Trees are a native clustered GL layer from `tree_inspect`: low zoom → density
-  blobs (sized by count), high zoom → individual points, the viewer's own ringed
-  in bone. Tap a cluster → zoom in; tap a tree → the **Inspect sheet from Step 7**.
-  A deterministic **ambient forest** fills the map for cold-start density.
-  **📍 My Grove** fits the view to your trees.
+**Design intent (owner vision):** the Earth IS the board — a full-screen, zoomable
+planet (globe → continent → country → city → neighborhood → individual tree), real
+satellite terrain, no map clutter, trees living at real coordinates ON the world.
+NOT a small boxed panel. Explorable and beautiful even without owning a tree.
+
+- **`ForestMap`** (`src/components/ForestMap.tsx`): **MapLibre GL, full-screen,
+  true GLOBE projection** with atmosphere/sky and **3D terrain** (`setTerrain`),
+  so you see the planet and fly down continuously. Basemap is **real satellite
+  imagery** — keyless by default (Esri World Imagery + AWS Terrarium elevation);
+  set `NEXT_PUBLIC_MAPTILER_KEY` to use MapTiler instead. No roads/POIs/labels.
+- **Density that resolves with zoom** (the performance + beauty story): a green
+  **heatmap** at planet scale → **clusters** (forests) → **individual** tappable
+  trees up close, all from `tree_inspect`. Own trees ringed in white. Tap a
+  cluster → fly in; tap a tree → the **Inspect sheet from Step 7**. A faint
+  ambient seed keeps the planet alive at cold-start. **📍 My Grove** flies to
+  your trees. A HUD shows "N trees on Earth".
 - `src/lib/tree/geo.ts` (pure, tested): `treesToGeoJSON`, `boundsOf`,
   `ambientForest`. Forest tab enabled in the bottom nav.
 
-Verification note: the map is WebGL, so there's no DB round-trip to script — it's
-covered by build/tests + the already-verified `tree_inspect` data path. A headless
-screenshot in this environment is blocked (the sandbox browser can't reach
-Supabase through the loopback proxy), but the component renders correctly in a
-real browser — run `npm run dev`, sign in, plant a tree, open **Forest**.
+Verification note: the map is WebGL and its satellite tiles load from Esri/AWS in
+the **viewer's** browser — both are blocked from this sandbox, so it can't be
+screenshotted here. Verified structurally (typecheck + production build + a
+headless smoke test showed WebGL2 available and **no config/JS errors**). See it
+live: `npm run dev` → plant a tree → open **Forest**.
 
-Deferred to later per the roadmap: **server-side aggregation/vector tiles** for
-scale (§13 scale path — MVP uses MapLibre's built-in client clustering), and
-**map-based plant-pin** onboarding (the plant flow still uses the Step-4 city
-picker; the map instance is ready to host pin-drop planting).
+Scale path to millions of trees (spec §13, staged): the `trees_geo_idx` GIST
+index is in place; MVP uses client-side heatmap + clustering, and the next scale
+step swaps in a **server aggregation RPC / vector tiles** by bbox+zoom. Also
+still open: **map-based plant-pin** onboarding with **privacy fuzzing** (snap/
+round the stored coordinate to an area, never a home address) — the plant flow
+currently uses the Step-4 city picker (already area-level, so privacy is fine for
+now); the globe is ready to host pin-drop planting next.
 
 ## Next — Step 9: Polish + anti-cheat pass (roadmap §17.9)
 

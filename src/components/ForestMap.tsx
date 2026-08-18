@@ -2,20 +2,64 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Map as MLMap, GeoJSONSource } from "maplibre-gl";
-import { treesToGeoJSON, ambientForest, boundsOf, CITY_ANCHORS, type InspectPoint } from "@/lib/tree/geo";
+import type { Map as MLMap, GeoJSONSource, SourceSpecification, LayerSpecification } from "maplibre-gl";
+import { treesToGeoJSON, ambientForest, boundsOf, type InspectPoint } from "@/lib/tree/geo";
 
 /**
- * The Forest map (roadmap §17.8, spec §13). A self-contained MapLibre GL map:
- * real world geography embedded from Natural Earth (world-atlas via npm — no
- * external tiles or API keys), a custom forest-ink style, and trees as native
- * GL layers on top. Low zoom clusters into density blobs; high zoom shows
- * individual trees (own trees ringed). Tap a cluster to zoom in, a tree to
- * inspect. An ambient seeded forest fills the map for cold-start density.
+ * The Forest — a full-screen, world-scale Earth (roadmap §17.8, spec §13, reimagined).
  *
- * No glyphs/sprite are referenced, so nothing loads from outside the app; city
- * labels are DOM markers (auto-tracked by MapLibre).
+ * MapLibre GL with a true GLOBE projection: you see the whole planet and fly down
+ * continuously to a single tree. Real satellite imagery + 3D elevation make it
+ * read as Earth, not a game board — no roads, POIs, or label clutter. Trees live
+ * at real coordinates ON the planet and resolve with zoom: a green density
+ * heatmap at planet scale → clusters → individual tappable trees up close.
+ *
+ * Basemap is keyless by default (Esri World Imagery + AWS terrain); set
+ * NEXT_PUBLIC_MAPTILER_KEY to use MapTiler instead (cleaner terms, faster tiles).
+ * The scale path to millions of trees is the existing GIST index → server
+ * aggregation / vector tiles; MVP renders from the public tree_inspect view.
  */
+
+const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_KEY;
+
+/** Basemap raster + elevation sources, keyless by default. */
+function basemapSources(): Record<string, SourceSpecification> {
+  if (MAPTILER_KEY) {
+    return {
+      sat: {
+        type: "raster",
+        tiles: [`https://api.maptiler.com/tiles/satellite-v2/{z}/{x}/{y}.jpg?key=${MAPTILER_KEY}`],
+        tileSize: 256,
+        maxzoom: 20,
+        attribution: "© MapTiler © Esri",
+      },
+      dem: {
+        type: "raster-dem",
+        tiles: [`https://api.maptiler.com/tiles/terrain-rgb-v2/{z}/{x}/{y}.webp?key=${MAPTILER_KEY}`],
+        encoding: "mapbox",
+        tileSize: 256,
+        maxzoom: 12,
+      },
+    };
+  }
+  return {
+    sat: {
+      type: "raster",
+      tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
+      tileSize: 256,
+      maxzoom: 19,
+      attribution: "Imagery © Esri, Maxar, Earthstar Geographics",
+    },
+    dem: {
+      type: "raster-dem",
+      tiles: ["https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"],
+      encoding: "terrarium",
+      tileSize: 256,
+      maxzoom: 15,
+    },
+  };
+}
+
 export function ForestMap({
   supabase,
   myUid,
@@ -24,12 +68,13 @@ export function ForestMap({
   supabase: SupabaseClient;
   myUid: string | null;
   onInspect: (treeId: string) => void;
-  }) {
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MLMap | null>(null);
   const inspectRef = useRef(onInspect);
   inspectRef.current = onInspect;
   const [myCoords, setMyCoords] = useState<[number, number][]>([]);
+  const [count, setCount] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -37,123 +82,146 @@ export function ForestMap({
 
     (async () => {
       const maplibregl = await import("maplibre-gl");
-      const topojson = await import("topojson-client");
-      const landMod = await import("world-atlas/land-110m.json");
-      const landTopo = (landMod.default ?? landMod) as unknown as Parameters<typeof topojson.feature>[0] & {
-        objects: { land: object };
-      };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const land = topojson.feature(landTopo as any, (landTopo as any).objects.land);
       if (cancelled || !containerRef.current) return;
 
       map = new maplibregl.Map({
         container: containerRef.current,
         attributionControl: false,
-        dragRotate: false,
-        maxZoom: 12,
-        minZoom: 1,
-        center: [-20, 30],
+        maxZoom: 18,
+        minZoom: 0.8,
+        center: [10, 25],
         zoom: 1.3,
         style: {
           version: 8,
-          sources: {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            land: { type: "geojson", data: land as any },
-          },
+          sources: basemapSources(),
           layers: [
-            { id: "sea", type: "background", paint: { "background-color": "#0a1611" } },
-            { id: "land", type: "fill", source: "land", paint: { "fill-color": "#24422f" } },
-            { id: "coast", type: "line", source: "land", paint: { "line-color": "#47694d", "line-width": 0.8 } },
+            { id: "space", type: "background", paint: { "background-color": "#05080c" } },
+            { id: "sat", type: "raster", source: "sat" } as LayerSpecification,
           ],
         },
       });
       const m = map;
       mapRef.current = m;
-      m.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+      m.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
 
-      // City labels as auto-tracked DOM markers (no glyphs needed).
-      for (const c of CITY_ANCHORS) {
-        const el = document.createElement("div");
-        el.className = "map-city-label";
-        el.textContent = c.name;
-        new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([c.lng, c.lat]).addTo(m);
-      }
+      m.on("style.load", () => {
+        // The planet. Continuous zoom from globe to street level.
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (m as any).setProjection({ type: "globe" });
+        } catch {}
+        // Atmosphere + a soft night-sky halo around the globe.
+        try {
+          m.setSky({
+            "sky-color": "#0a1420",
+            "sky-horizon-blend": 0.5,
+            "horizon-color": "#2b4a52",
+            "horizon-fog-blend": 0.6,
+            "fog-color": "#0a1611",
+            "fog-ground-blend": 0.5,
+            "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 0.9, 6, 0.2, 10, 0],
+          });
+        } catch {}
+        // Drape the satellite imagery over real elevation.
+        try {
+          m.setTerrain({ source: "dem", exaggeration: 1.35 });
+        } catch {}
+      });
 
       m.on("load", async () => {
-
-        // Ambient decorative forest (non-interactive).
-        m.addSource("ambient", { type: "geojson", data: ambientForest() });
-        m.addLayer({
-          id: "ambient",
-          type: "circle",
-          source: "ambient",
-          paint: {
-            "circle-radius": ["interpolate", ["linear"], ["zoom"], 1, 1.6, 6, 3],
-            "circle-color": "#6e8f4e",
-            "circle-opacity": 0.55,
-          },
-        });
-
-        // Real trees, clustered.
+        // Real trees from the public inspect view.
         const { data } = await supabase
           .from("tree_inspect")
           .select("id,owner_id,name,species_key,lat,lng,admire_count");
         const rows = (data as InspectPoint[]) ?? [];
         if (cancelled) return;
+        setCount(rows.length);
         setMyCoords(rows.filter((r) => r.owner_id === myUid).map((r) => [r.lng, r.lat]));
 
+        const realFC = treesToGeoJSON(rows, myUid);
+        // Density = real trees + a faint ambient seed, so the planet reads alive
+        // at cold-start (placeholder; fades out as real trees populate).
+        const density = {
+          type: "FeatureCollection" as const,
+          features: [...ambientForest(18).features, ...realFC.features],
+        };
+
+        m.addSource("density", { type: "geojson", data: density });
         m.addSource("trees", {
           type: "geojson",
-          data: treesToGeoJSON(rows, myUid),
+          data: realFC,
           cluster: true,
-          clusterRadius: 46,
-          clusterMaxZoom: 7,
+          clusterRadius: 50,
+          clusterMaxZoom: 8,
         });
 
+        // 1) Planet-scale density bloom — green concentrations where trees gather.
+        m.addLayer({
+          id: "density-heat",
+          type: "heatmap",
+          source: "density",
+          maxzoom: 7,
+          paint: {
+            "heatmap-weight": 0.6,
+            "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 0, 1, 6, 2.2],
+            "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 0, 3, 6, 26],
+            "heatmap-opacity": ["interpolate", ["linear"], ["zoom"], 4, 0.85, 6.5, 0],
+            "heatmap-color": [
+              "interpolate",
+              ["linear"],
+              ["heatmap-density"],
+              0, "rgba(0,0,0,0)",
+              0.2, "rgba(60,110,70,0.35)",
+              0.5, "rgba(110,160,80,0.65)",
+              0.8, "rgba(160,205,120,0.85)",
+              1, "rgba(205,230,170,0.95)",
+            ],
+          },
+        });
+
+        // 2) Mid-zoom clusters — forests.
         m.addLayer({
           id: "clusters",
           type: "circle",
           source: "trees",
           filter: ["has", "point_count"],
+          minzoom: 3,
           paint: {
-            "circle-color": "#5e7e4e",
-            "circle-opacity": 0.85,
-            "circle-stroke-color": "#8fb57a",
-            "circle-stroke-width": 1,
-            "circle-radius": ["step", ["get", "point_count"], 12, 10, 18, 50, 26, 200, 34],
+            "circle-color": "rgba(94,126,78,0.85)",
+            "circle-stroke-color": "#a7cf8a",
+            "circle-stroke-width": 1.5,
+            "circle-radius": ["step", ["get", "point_count"], 14, 10, 20, 50, 28, 250, 38],
           },
         });
 
-        // Individual trees; the viewer's own are ringed in bone.
+        // 3) Individual trees — the viewer's own ringed in bone.
         m.addLayer({
           id: "tree-points",
           type: "circle",
           source: "trees",
           filter: ["!", ["has", "point_count"]],
           paint: {
-            "circle-radius": ["case", ["get", "mine"], 6, 4],
-            "circle-color": ["case", ["get", "mine"], "#8fb57a", "#6e8f4e"],
-            "circle-stroke-color": ["case", ["get", "mine"], "#e9e5d8", "#243528"],
-            "circle-stroke-width": ["case", ["get", "mine"], 2, 0.5],
+            "circle-radius": ["interpolate", ["linear"], ["zoom"], 5, 3, 12, 7, 16, 12],
+            "circle-color": ["case", ["get", "mine"], "#b7e08f", "#6e8f4e"],
+            "circle-stroke-color": ["case", ["get", "mine"], "#ffffff", "#0a1611"],
+            "circle-stroke-width": ["case", ["get", "mine"], 2.5, 1],
           },
         });
 
-        // Tap a cluster → zoom into it.
+        // Fly a cluster open on tap.
         m.on("click", "clusters", async (e) => {
           const f = m.queryRenderedFeatures(e.point, { layers: ["clusters"] })[0];
-          const clusterId = f.properties?.cluster_id;
           const src = m.getSource("trees") as GeoJSONSource;
-          const zoom = await src.getClusterExpansionZoom(clusterId);
+          const zoom = await src.getClusterExpansionZoom(f.properties?.cluster_id);
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          m.easeTo({ center: (f.geometry as any).coordinates, zoom });
+          m.flyTo({ center: (f.geometry as any).coordinates, zoom: zoom + 0.4, speed: 0.8 });
         });
 
-        // Tap a tree → inspect.
+        // Tap an individual tree → inspect.
         m.on("click", "tree-points", (e) => {
           const id = e.features?.[0]?.properties?.id;
           if (id) inspectRef.current(String(id));
         });
-
         for (const layer of ["clusters", "tree-points"]) {
           m.on("mouseenter", layer, () => (m.getCanvas().style.cursor = "pointer"));
           m.on("mouseleave", layer, () => (m.getCanvas().style.cursor = ""));
@@ -170,12 +238,18 @@ export function ForestMap({
 
   function flyToMyGrove() {
     const b = boundsOf(myCoords);
-    if (b && mapRef.current) mapRef.current.fitBounds(b, { padding: 80, maxZoom: 9, duration: 800 });
+    if (b && mapRef.current) mapRef.current.fitBounds(b, { padding: 120, maxZoom: 14, duration: 1600 });
   }
 
   return (
     <div className="forest">
       <div ref={containerRef} className="forest-canvas" />
+      <div className="forest-hud">
+        <span className="forest-title serif">The Living Forest</span>
+        {count !== null && (
+          <span className="forest-count">{count.toLocaleString()} tree{count === 1 ? "" : "s"} on Earth</span>
+        )}
+      </div>
       <button className="my-grove-btn" onClick={flyToMyGrove} disabled={myCoords.length === 0}>
         📍 My Grove
       </button>

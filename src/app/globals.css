@@ -773,13 +773,13 @@ button.btn:disabled {
 
 /* ===== Step 8: Forest map =============================================== */
 
+/* Full-screen Earth — breaks out of the phone-width column entirely. */
 .forest {
   position: fixed;
   inset: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100%;
-  max-width: 520px;
+  width: 100vw;
+  height: 100dvh;
+  background: #05080c;
 }
 .forest-canvas {
   position: absolute;
@@ -788,15 +788,31 @@ button.btn:disabled {
 .forest-canvas .maplibregl-canvas {
   outline: none;
 }
-.map-city-label {
-  font-family: var(--font-serif);
-  font-style: italic;
-  font-size: 11px;
-  color: rgba(233, 229, 216, 0.4);
-  letter-spacing: 0.02em;
+.forest-hud {
+  position: absolute;
+  top: calc(16px + env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
   pointer-events: none;
-  white-space: nowrap;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+  text-align: center;
+}
+.forest-title {
+  font-size: 17px;
+  color: var(--bone);
+  letter-spacing: 0.04em;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+}
+.forest-count {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--moss);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
 }
 .my-grove-btn {
   position: absolute;
