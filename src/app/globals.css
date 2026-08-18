@@ -211,6 +211,230 @@ button.btn:disabled {
   }
 }
 
+/* ===== Step 4: plant flow + Home ========================================= */
+
+/* --- Plant flow --- */
+.flow {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  min-height: 100dvh;
+  text-align: center;
+  padding: 32px 0;
+}
+.flow-title {
+  font-size: 28px;
+  margin: 0;
+  font-weight: 500;
+}
+.flow-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.species-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  width: 100%;
+  max-width: 360px;
+}
+.species-card {
+  font-family: inherit;
+  color: var(--bone);
+  background: var(--ink-2);
+  border: 1px solid var(--ink-3);
+  border-radius: var(--radius);
+  padding: 10px 6px 12px;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.15s, opacity 0.2s;
+}
+.species-card.sel {
+  border-color: var(--moss);
+  transform: translateY(-2px);
+}
+.species-card.locked {
+  opacity: 0.45;
+  cursor: default;
+}
+.species-card .sp-mini {
+  width: 70px;
+  height: 84px;
+  margin: 0 auto;
+  display: block;
+}
+.species-card .sp-name {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  margin-top: 4px;
+  color: var(--bone-dim);
+}
+
+.text-input {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  text-align: center;
+  color: var(--bone);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--ink-3);
+  padding: 10px 6px;
+  width: min(80vw, 300px);
+  outline: none;
+}
+.text-input:focus {
+  border-color: var(--moss);
+}
+
+.place-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  max-width: 360px;
+}
+.place-chip {
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--bone-dim);
+  background: var(--ink-2);
+  border: 1px solid var(--ink-3);
+  border-radius: 100px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+.place-chip.sel {
+  border-color: var(--moss);
+  color: var(--moss);
+}
+
+.plant-stage {
+  width: min(70vw, 240px);
+  height: min(84vw, 288px);
+}
+.plant-stage-svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* --- Home --- */
+.home {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100dvh;
+  padding: 22px 0 40px;
+  gap: 10px;
+}
+.home-top {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+.greeting {
+  color: var(--bone-dim);
+  letter-spacing: 0.04em;
+}
+.resources {
+  display: flex;
+  gap: 14px;
+  font-variant-numeric: tabular-nums;
+  color: var(--bone);
+}
+.home-stage {
+  width: min(74vw, 300px);
+  height: min(80vw, 320px);
+  margin-top: 8px;
+}
+.home-info {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.stage-chip {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--moss);
+  border: 1px solid var(--moss-deep);
+  border-radius: 100px;
+  padding: 4px 12px;
+}
+.stage-chip .glyph {
+  filter: saturate(1.2);
+}
+.tree-name {
+  font-size: 34px;
+  margin: 2px 0 0;
+  font-weight: 500;
+}
+.tree-meta {
+  color: var(--bone-dim);
+  font-size: 13px;
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+.health-line {
+  margin-top: 10px;
+  width: min(70vw, 240px);
+}
+.health-track {
+  height: 4px;
+  background: var(--ink-3);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.health-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.6s ease, background 0.4s;
+}
+.health-label {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--bone-dim);
+  margin-top: 7px;
+  display: flex;
+  justify-content: space-between;
+}
+.home-actions {
+  margin-top: 18px;
+}
+.dev-warp {
+  margin-top: auto;
+  padding-top: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--bone-dim);
+  letter-spacing: 0.08em;
+}
+.dev-warp button {
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--bone-dim);
+  background: transparent;
+  border: 1px dashed var(--ink-3);
+  border-radius: 8px;
+  padding: 5px 9px;
+  cursor: pointer;
+}
+.dev-warp button:hover {
+  color: var(--moss);
+  border-color: var(--moss-deep);
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.001ms !important;

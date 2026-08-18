@@ -83,3 +83,14 @@ When you move to Step 2, apply the next migration the same way:
 2. No new dashboard toggles are needed; anonymous auth from Step 1 already covers
    guests.
 3. Verify: `node scripts/verify-step2.mjs` → should end with "🌳 Step 2 verified".
+
+---
+
+## Step 4 (Check-in economy) — one more migration
+
+1. **SQL Editor → New query**, paste all of
+   `supabase/migrations/0003_checkin_economy.sql`, and **Run**. It adds the
+   `seed_transactions` / `water_transactions` ledgers and the server-authoritative
+   `check_in()` function. Additive and idempotent.
+2. No new dashboard toggles.
+3. Verify: `node scripts/verify-step4.mjs` → should end with "🌱 Step 4 verified".

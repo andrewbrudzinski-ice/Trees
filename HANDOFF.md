@@ -126,11 +126,41 @@ The renderer takes `g`/`ageFactor`/`health` as inputs; callers derive them from
 timestamps via `growth.ts` (server-authoritative) and pass them in. It never
 reads a clock.
 
-## Next — Step 4: Plant-first onboarding + Home (roadmap §17.4)
+## Step 4 — Plant-first onboarding + Home (roadmap §17.4) — BUILT
 
-Species/name/map-pin plant flow **as a guest** (no signup wall); the home
-screen showing the tree via `renderTree` + `computeTreeState`; a check-in RPC +
-seed ledger (idempotent `dedupe_key`, e.g. `checkin:{user}:{date}` per §12/§14).
-This is where the growth math, renderer, and the guest identity from Step 1 all
-come together into the real loop. Keep balances/age/health server-derived; the
-client requests render state, never computes it.
+Offline-verified (34 unit tests + typecheck + lint + `next build` all green).
+Live DB check needs migration `0003` applied (below).
+
+- **Migration `0003_checkin_economy.sql`**: `seed_transactions` + `water_transactions`
+  ledgers (read-only to owner; no client write policy — rewards are minted only
+  inside SECURITY DEFINER functions) and the **`check_in()` RPC**: +1 seed/UTC day
+  (idempotent via `dedupe_key`), +2 streak bonus every 3rd consecutive day,
+  per-tree milestone rewards (maturity +3 at day 7; age tiers 30/100/365/1000/2000)
+  written to the biography too, health restored on visit, and `profiles.seeds`
+  reconciled from the ledger. Water ledger defined now but exercised in Step 5.
+- **`GET /api/home`**: server-authoritative render state — derives each tree's
+  age/stage/health server-side (`computeTreeState`) and returns profile +
+  `checkedInToday`. The client only draws.
+- **UI** (`src/app/page.tsx` + `src/components/*`): welcome → **plant as a guest**
+  (species → name → place → seed animation, no signup wall) → **Home** (big tree
+  via `TreeSvg`, stage chip, age, health bar, seeds/water/streak, **Check in**).
+  Plant uses a curated city picker — the real MapLibre map is Step 8. A dev-only
+  time-warp control on Home ages the tree (+1d/+7d/+1yr) and re-checks-in, so the
+  whole loop is demoable in seconds.
+- Economy dial `SECOND_TREE_COST = 7` (spec §6a), used at the gate in Step 6.
+
+### To verify Step 4 live
+
+1. Apply `supabase/migrations/0003_checkin_economy.sql` (SQL editor; idempotent).
+2. `node scripts/verify-step4.mjs` → plants, checks in (+1), proves the repeat is
+   a no-op, ages past maturity for the +3 (once), reconciles to the ledger, and
+   confirms RLS — ending "🌱 Step 4 verified".
+3. Or run it: `npm run dev` → plant a tree → use the dev time-warp to watch it grow.
+
+## Next — Step 5: Health + water (roadmap §17.5)
+
+Wire the **Water** action + `water_transactions` ledger (spec §11/§12): water
+restores health (+22), decrements the water balance, logs a `watered` event, and
+the Home gains its second action. Health decay/restore is already modeled in
+`growth.ts`; this step gives it the water economy and UI. Keep it
+server-authoritative (a `water()` RPC mirroring `check_in()`).
