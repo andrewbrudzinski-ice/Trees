@@ -810,6 +810,20 @@ button.btn:disabled {
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95), 0 0 2px rgba(0, 0, 0, 0.8);
   transition: opacity 0.3s ease;
 }
+.map-own-label {
+  font-family: var(--font-serif);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  background: var(--moss);
+  padding: 3px 10px;
+  border-radius: 100px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.6);
+}
 .forest-hud {
   position: absolute;
   top: calc(14px + env(safe-area-inset-top));
