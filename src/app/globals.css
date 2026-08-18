@@ -771,6 +771,66 @@ button.btn:disabled {
   color: var(--bone-dim);
 }
 
+/* ===== Step 8: Forest map =============================================== */
+
+.forest {
+  position: fixed;
+  inset: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 520px;
+}
+.forest-canvas {
+  position: absolute;
+  inset: 0;
+}
+.forest-canvas .maplibregl-canvas {
+  outline: none;
+}
+.map-city-label {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 11px;
+  color: rgba(233, 229, 216, 0.4);
+  letter-spacing: 0.02em;
+  pointer-events: none;
+  white-space: nowrap;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+.my-grove-btn {
+  position: absolute;
+  left: 16px;
+  bottom: 92px;
+  z-index: 15;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--ink);
+  background: var(--moss);
+  border: none;
+  border-radius: 100px;
+  padding: 10px 16px;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+.my-grove-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+/* Tone MapLibre's default controls to the forest palette. */
+.forest .maplibregl-ctrl-group {
+  background: var(--ink-2);
+  border: 1px solid var(--ink-3);
+}
+.forest .maplibregl-ctrl-group button + button {
+  border-top-color: var(--ink-3);
+}
+.forest .maplibregl-ctrl button .maplibregl-ctrl-icon {
+  filter: invert(0.85) sepia(0.2) hue-rotate(70deg);
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.001ms !important;

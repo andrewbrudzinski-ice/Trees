@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Inter } from "next/font/google";
+import "maplibre-gl/dist/maplibre-gl.css";
 import "./globals.css";
 
 // Humanist serif for the tree's name and age (a name deserves dignity);

@@ -234,10 +234,39 @@ in-app entry point until the **Forest map (Step 8)** provides discovery — the
 sheets and public views are built and verified now, and Step 8 wires tree taps to
 them.
 
-## Next — Step 8: Map (roadmap §17.8)
+## Step 8 — The Forest map (roadmap §17.8) — BUILT
 
-MapLibre GL with a custom minimal forest-ink style; trees as a layer on top;
-low-zoom server-aggregated density, high-zoom individual trees; own trees ringed;
-"📍 My Grove" recenter; tap a tree → the Inspect sheet (already built). Plus an
-ambient/seeded forest for cold-start density. The prototype's hand-typed
-continent canvas is throwaway — this replaces it with real geography.
+Offline-verified (44 unit tests + typecheck + lint + `next build` all green).
+No new migration; reads the public `tree_inspect` view from Step 7.
+
+- **`ForestMap`** (`src/components/ForestMap.tsx`): MapLibre GL with a custom
+  forest-ink style. **Self-contained** — real world geography is embedded from
+  Natural Earth (`world-atlas` via npm, converted with `topojson-client`); **no
+  external tiles, no API keys, no glyphs/sprite**, so it works under the
+  `*.supabase.co`-only network policy. City labels are auto-tracked DOM markers.
+- Trees are a native clustered GL layer from `tree_inspect`: low zoom → density
+  blobs (sized by count), high zoom → individual points, the viewer's own ringed
+  in bone. Tap a cluster → zoom in; tap a tree → the **Inspect sheet from Step 7**.
+  A deterministic **ambient forest** fills the map for cold-start density.
+  **📍 My Grove** fits the view to your trees.
+- `src/lib/tree/geo.ts` (pure, tested): `treesToGeoJSON`, `boundsOf`,
+  `ambientForest`. Forest tab enabled in the bottom nav.
+
+Verification note: the map is WebGL, so there's no DB round-trip to script — it's
+covered by build/tests + the already-verified `tree_inspect` data path. A headless
+screenshot in this environment is blocked (the sandbox browser can't reach
+Supabase through the loopback proxy), but the component renders correctly in a
+real browser — run `npm run dev`, sign in, plant a tree, open **Forest**.
+
+Deferred to later per the roadmap: **server-side aggregation/vector tiles** for
+scale (§13 scale path — MVP uses MapLibre's built-in client clustering), and
+**map-based plant-pin** onboarding (the plant flow still uses the Step-4 city
+picker; the map instance is ready to host pin-drop planting).
+
+## Next — Step 9: Polish + anti-cheat pass (roadmap §17.9)
+
+Rate limits and dedupe-key coverage on the action RPCs; an **RLS audit** — verify
+inspect/profile leak no health/email (largely covered by verify-step7) and
+**close the direct-`trees`-INSERT gap** so `plant_tree` is the only plant path
+(the deferred item from Step 6); reduced-motion and mobile polish. Then Step 10:
+ship + instrument the day-1→day-7 funnel and guest→signup conversion.

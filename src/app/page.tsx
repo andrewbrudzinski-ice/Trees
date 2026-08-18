@@ -12,6 +12,7 @@ import { Account } from "@/components/Account";
 import { BottomNav, type Tab } from "@/components/BottomNav";
 import { TreeSheet, type TreeTarget } from "@/components/TreeSheet";
 import { ProfileSheet } from "@/components/ProfileSheet";
+import { ForestMap } from "@/components/ForestMap";
 
 /**
  * The Tree — app shell (roadmap Steps 4–6).
@@ -183,7 +184,7 @@ export default function App() {
 
       {phase === "app" && authed && !showPlant && (
         <>
-          {tab === "home" ? (
+          {tab === "home" && (
             <Home
               payload={payload}
               speciesByKey={speciesByKey}
@@ -194,7 +195,8 @@ export default function App() {
               onDevDryOut={devDryOut}
               busy={busy}
             />
-          ) : (
+          )}
+          {tab === "grove" && (
             <Grove
               payload={payload}
               speciesByKey={speciesByKey}
@@ -205,6 +207,9 @@ export default function App() {
               onOpenProfile={() => myUid && setSheet({ type: "profile", userId: myUid })}
               busy={busy}
             />
+          )}
+          {tab === "forest" && supabase && (
+            <ForestMap supabase={supabase} myUid={myUid} onInspect={openTreeById} />
           )}
           <BottomNav tab={tab} onTab={setTab} />
           {error && <p className="error fade-in error-float">{error}</p>}

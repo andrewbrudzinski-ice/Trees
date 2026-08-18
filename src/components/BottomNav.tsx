@@ -1,6 +1,6 @@
 "use client";
 
-export type Tab = "home" | "grove";
+export type Tab = "home" | "grove" | "forest";
 
 export function BottomNav({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void }) {
   return (
@@ -11,7 +11,7 @@ export function BottomNav({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void })
       <button className={tab === "grove" ? "active" : ""} onClick={() => onTab("grove")}>
         🪴<span>Grove</span>
       </button>
-      <button className="soon" disabled title="Arrives in Step 8">
+      <button className={tab === "forest" ? "active" : ""} onClick={() => onTab("forest")}>
         🌎<span>Forest</span>
       </button>
     </nav>
