@@ -24,6 +24,19 @@ import { baseStyle, applyGlobe } from "@/lib/tree/mapstyle";
 const prefersReducedMotion = () =>
   typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
+/** Fly to the viewer's grove. Handles a single tree (degenerate bounds) cleanly. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function goToGrove(map: any, coords: [number, number][]) {
+  if (coords.length === 0) return;
+  const reduce = prefersReducedMotion();
+  if (coords.length === 1) {
+    map.flyTo({ center: coords[0], zoom: 10, speed: 0.9, animate: !reduce });
+    return;
+  }
+  const b = boundsOf(coords);
+  if (b) map.fitBounds(b, { padding: 120, maxZoom: 12, duration: reduce ? 0 : 1600 });
+}
+
 export function ForestMap({
   supabase,
   myUid,
@@ -87,7 +100,10 @@ export function ForestMap({
         const rows = (data as InspectPoint[]) ?? [];
         if (cancelled) return;
         setCount(rows.length);
-        setMyCoords(rows.filter((r) => r.owner_id === myUid).map((r) => [r.lng, r.lat]));
+        const ownCoords = rows
+          .filter((r) => r.owner_id === myUid)
+          .map((r) => [r.lng, r.lat] as [number, number]);
+        setMyCoords(ownCoords);
 
         const realFC = treesToGeoJSON(rows, myUid);
         // Density = real trees + a faint ambient seed, so the planet reads alive
@@ -145,14 +161,31 @@ export function ForestMap({
           },
         });
 
-        // 3) Individual trees — the viewer's own ringed in bone.
+        // 3a) A soft glow under the viewer's OWN trees, so they're easy to spot
+        // even zoomed out (it's the "where's my tree?" beacon).
+        m.addLayer({
+          id: "tree-mine-halo",
+          type: "circle",
+          source: "trees",
+          filter: ["all", ["!", ["has", "point_count"]], ["get", "mine"]],
+          paint: {
+            "circle-radius": ["interpolate", ["linear"], ["zoom"], 2, 9, 8, 16, 16, 26],
+            "circle-color": "#b7e08f",
+            "circle-opacity": 0.28,
+            "circle-blur": 0.6,
+          },
+        });
+
+        // 3b) Individual trees — the viewer's own bigger + ringed in bone.
         m.addLayer({
           id: "tree-points",
           type: "circle",
           source: "trees",
           filter: ["!", ["has", "point_count"]],
           paint: {
-            "circle-radius": ["interpolate", ["linear"], ["zoom"], 5, 3, 12, 7, 16, 12],
+            "circle-radius": ["case", ["get", "mine"],
+              ["interpolate", ["linear"], ["zoom"], 2, 5, 8, 8, 16, 13],
+              ["interpolate", ["linear"], ["zoom"], 5, 3, 12, 7, 16, 12]],
             "circle-color": ["case", ["get", "mine"], "#b7e08f", "#6e8f4e"],
             "circle-stroke-color": ["case", ["get", "mine"], "#ffffff", "#0a1611"],
             "circle-stroke-width": ["case", ["get", "mine"], 2.5, 1],
@@ -177,6 +210,14 @@ export function ForestMap({
           m.on("mouseenter", layer, () => (m.getCanvas().style.cursor = "pointer"));
           m.on("mouseleave", layer, () => (m.getCanvas().style.cursor = ""));
         }
+
+        // Open the Forest ON your grove so you never have to hunt for your tree.
+        // A brief beat first lets the planet register, then we fly down.
+        if (ownCoords.length > 0) {
+          const reveal = () => !cancelled && goToGrove(m, ownCoords);
+          if (prefersReducedMotion()) reveal();
+          else setTimeout(reveal, 1000);
+        }
       });
     })();
 
@@ -188,8 +229,7 @@ export function ForestMap({
   }, [supabase, myUid]);
 
   function flyToMyGrove() {
-    const b = boundsOf(myCoords);
-    if (b && mapRef.current) mapRef.current.fitBounds(b, { padding: 120, maxZoom: 14, duration: prefersReducedMotion() ? 0 : 1600 });
+    if (mapRef.current) goToGrove(mapRef.current, myCoords);
   }
 
   return (
