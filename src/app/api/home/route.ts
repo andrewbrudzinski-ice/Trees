@@ -13,6 +13,25 @@ import { computeTreeState } from "@/lib/tree/growth";
 import type { Profile, Tree } from "@/lib/types";
 
 export async function GET() {
+  try {
+    return await home();
+  } catch (e) {
+    // Never 500 the render-state route — degrade to "not signed in" and surface
+    // a short diagnostic so a misconfigured deploy is debuggable, not a brick.
+    return NextResponse.json(
+      { authed: false, diag: (e as Error)?.message ?? String(e) },
+      { status: 200 },
+    );
+  }
+}
+
+async function home() {
+  const hasUrl = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const hasKey = !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!hasUrl || !hasKey) {
+    return NextResponse.json({ authed: false, diag: "env-missing", hasUrl, hasKey }, { status: 200 });
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
