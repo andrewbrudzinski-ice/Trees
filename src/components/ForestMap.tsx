@@ -100,10 +100,26 @@ export function ForestMap({
         const rows = (data as InspectPoint[]) ?? [];
         if (cancelled) return;
         setCount(rows.length);
-        const ownCoords = rows
-          .filter((r) => r.owner_id === myUid)
-          .map((r) => [r.lng, r.lat] as [number, number]);
+        const ownRows = rows.filter((r) => r.owner_id === myUid);
+        const ownCoords = ownRows.map((r) => [r.lng, r.lat] as [number, number]);
         setMyCoords(ownCoords);
+
+        // A name label pinned to each of your own trees, visible up close.
+        const ownLabels = ownRows.map((t) => {
+          const el = document.createElement("div");
+          el.className = "map-own-label";
+          el.textContent = `🌱 ${t.name}`;
+          new maplibregl.Marker({ element: el, anchor: "bottom", offset: [0, -10] })
+            .setLngLat([t.lng, t.lat])
+            .addTo(m);
+          return el;
+        });
+        const updateOwnLabels = () => {
+          const show = m.getZoom() >= 7.5;
+          for (const el of ownLabels) el.style.opacity = show ? "1" : "0";
+        };
+        updateOwnLabels();
+        m.on("zoom", updateOwnLabels);
 
         const realFC = treesToGeoJSON(rows, myUid);
         // Density = real trees + a faint ambient seed, so the planet reads alive
