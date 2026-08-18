@@ -11,13 +11,17 @@ export function Home({
   payload,
   speciesByKey,
   onCheckin,
+  onWater,
   onDevWarp,
+  onDevDryOut,
   busy,
 }: {
   payload: Extract<HomePayload, { authed: true }>;
   speciesByKey: Map<string, Species>;
   onCheckin: () => void;
+  onWater: (treeId: string) => void;
   onDevWarp: (days: number) => void;
+  onDevDryOut: (days: number) => void;
   busy: boolean;
 }) {
   const entry = payload.trees[0];
@@ -71,11 +75,19 @@ export function Home({
         <button className="btn" onClick={onCheckin} disabled={payload.checkedInToday || busy}>
           {payload.checkedInToday ? "✓ Checked in today" : busy ? "…" : "Check in today"}
         </button>
+        <button
+          className="btn ghost"
+          onClick={() => onWater(tree.id)}
+          disabled={water <= 0 || busy}
+          title={water <= 0 ? "Out of water — check in to earn more" : "Water your tree (+restores health)"}
+        >
+          💧 Water{water <= 0 ? "" : ` (${water})`}
+        </button>
       </div>
 
       {isDev && (
         <div className="dev-warp">
-          <span>dev time-warp</span>
+          <span>dev</span>
           <button onClick={() => onDevWarp(1)} disabled={busy}>
             +1 day
           </button>
@@ -84,6 +96,9 @@ export function Home({
           </button>
           <button onClick={() => onDevWarp(365)} disabled={busy}>
             +1 year
+          </button>
+          <button onClick={() => onDevDryOut(4)} disabled={busy} title="Age care timestamps so health decays">
+            dry out
           </button>
         </div>
       )}

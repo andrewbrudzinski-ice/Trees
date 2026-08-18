@@ -94,3 +94,13 @@ When you move to Step 2, apply the next migration the same way:
    `check_in()` function. Additive and idempotent.
 2. No new dashboard toggles.
 3. Verify: `node scripts/verify-step4.mjs` → should end with "🌱 Step 4 verified".
+
+---
+
+## Step 5 (Water) — one more migration
+
+1. **SQL Editor → New query**, paste all of `supabase/migrations/0004_water.sql`,
+   and **Run**. It adds the `water()` function and updates `check_in()` to grant
+   daily water. Additive and idempotent.
+2. No new dashboard toggles.
+3. Verify: `node scripts/verify-step5.mjs` → should end with "💧 Step 5 verified".

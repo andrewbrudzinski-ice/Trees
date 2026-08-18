@@ -82,6 +82,16 @@ export default function App() {
     setBusy(false);
   };
 
+  const water = async (treeId: string) => {
+    if (!supabase) return;
+    setBusy(true);
+    setError(null);
+    const { error: rpcErr } = await supabase.rpc("water", { p_tree: treeId });
+    if (rpcErr) setError(rpcErr.message);
+    await refetchHome();
+    setBusy(false);
+  };
+
   const devWarp = async (days: number) => {
     setBusy(true);
     await fetch("/api/dev/time-warp", {
@@ -91,6 +101,18 @@ export default function App() {
     });
     // A warp changes planted_at; a check-in then collects any milestones reached.
     if (supabase) await supabase.rpc("check_in");
+    await refetchHome();
+    setBusy(false);
+  };
+
+  const devDryOut = async (days: number) => {
+    setBusy(true);
+    // Age the care timestamps only (no check-in after), so health visibly decays.
+    await fetch("/api/dev/time-warp", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ dryOutDays: days }),
+    });
     await refetchHome();
     setBusy(false);
   };
@@ -146,7 +168,9 @@ export default function App() {
             payload={payload}
             speciesByKey={speciesByKey}
             onCheckin={checkIn}
+            onWater={water}
             onDevWarp={devWarp}
+            onDevDryOut={devDryOut}
             busy={busy}
           />
           {error && <p className="error fade-in">{error}</p>}

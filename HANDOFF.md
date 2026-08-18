@@ -157,10 +157,35 @@ Live DB check needs migration `0003` applied (below).
    confirms RLS — ending "🌱 Step 4 verified".
 3. Or run it: `npm run dev` → plant a tree → use the dev time-warp to watch it grow.
 
-## Next — Step 5: Health + water (roadmap §17.5)
+## Step 5 — Health + water (roadmap §17.5) — BUILT
 
-Wire the **Water** action + `water_transactions` ledger (spec §11/§12): water
-restores health (+22), decrements the water balance, logs a `watered` event, and
-the Home gains its second action. Health decay/restore is already modeled in
-`growth.ts`; this step gives it the water economy and UI. Keep it
-server-authoritative (a `water()` RPC mirroring `check_in()`).
+Offline-verified (34 unit tests + typecheck + lint + `next build` all green).
+Live DB check needs migration `0004` applied (below).
+
+- **Migration `0004_water.sql`**: server-authoritative **`water(p_tree)` RPC** —
+  spends 1 water (refused at 0 and on trees you don't own), refreshes
+  `last_watered_at` (which restores health via the `growth.ts` derivation), logs
+  a `watered` event, and reconciles `profiles.water` from the ledger. Also
+  updates **`check_in()`** to grant **+1 water/day** so the resource replenishes.
+  Water balance = 3 (starting grant) + sum(`water_transactions`).
+- **UI**: Home gains its second action — **💧 Water** (disabled at 0 water) — next
+  to Check in. A dev-only **dry out** control ages the care timestamps so health
+  visibly decays, making watering demoable; the existing dev warp/check-in
+  restore it.
+- **`GET /api/dev/time-warp`** gained a `dryOutDays` mode (dev only) used by that
+  control.
+- `scripts/verify-step5.mjs`: live check — start 3 water, check-in → 4, water → 3,
+  ledger reconciles, `watered` event logged, empty/foreign watering refused, RLS.
+
+Note on the health model (carried from Step 2): health is a pure function of
+time-since-care, so any care — a check-in visit or a watering — refreshes it to
+full under the gentle MVP. The spec's separate +15/+22 restore amounts remain as
+constants for a later accumulation model; they don't change the derivation now.
+
+## Next — Step 6: Second tree + Grove + the account gate (roadmap §17.6)
+
+The account moment. A **Grove** grid of the user's trees; a state-aware plant
+slot (locked / guest-account-gate / plantable) keyed off `SECOND_TREE_COST = 7`;
+Supabase **email signup with anonymous→email account linking** so a guest's seeds
+and first tree carry over with no data migration; sign in / sign out. This is the
+one flow the prototype fakes and the real build must get right (spec §6a).

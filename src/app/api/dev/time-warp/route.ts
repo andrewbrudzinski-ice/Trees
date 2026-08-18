@@ -81,6 +81,7 @@ export async function POST(request: Request) {
     lat?: number;
     lng?: number;
     days?: number;
+    dryOutDays?: number;
     treeId?: string;
   };
 
@@ -105,6 +106,20 @@ export async function POST(request: Request) {
       meta: { via: "dev/time-warp" },
     });
     return NextResponse.json(withState(tree), { status: 201 });
+  }
+
+  // --- Dry out: age the care timestamps so health decays (to demo watering) --
+  if (body.dryOutDays != null) {
+    const dryDays = Number(body.dryOutDays);
+    if (!Number.isFinite(dryDays) || dryDays <= 0) {
+      return NextResponse.json({ error: "`dryOutDays` must be a positive number." }, { status: 400 });
+    }
+    const stale = new Date(Date.now() - dryDays * DAY_MS).toISOString();
+    let dq = supabase.from("trees").update({ last_watered_at: stale, last_visit_at: stale }).eq("owner_id", user.id);
+    if (body.treeId) dq = dq.eq("id", body.treeId);
+    const { data: dried, error: dErr } = await dq.select("*");
+    if (dErr) return NextResponse.json({ error: dErr.message }, { status: 400 });
+    return NextResponse.json({ driedDays: dryDays, trees: (dried as Tree[]).map(withState) });
   }
 
   // --- Warp time by moving planted_at (and care) backwards -------------------
