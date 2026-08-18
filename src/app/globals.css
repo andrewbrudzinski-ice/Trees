@@ -1,0 +1,900 @@
+/* The Tree — design language: "naturalist observatory".
+   Tokens ported from the prototype so the production build carries the same
+   forest-ink palette from day one. */
+:root {
+  --ink: #0f1c16;
+  --ink-2: #152a20;
+  --ink-3: #1d3728;
+  --bone: #e9e5d8;
+  --bone-dim: #a7b0a2;
+  --moss: #8fb57a;
+  --moss-deep: #5e7e4e;
+  --bark: #5a4632;
+  --bloom: #d8b7c6;
+  --gold: #d8c27a;
+  --water: #8fc4d8;
+  --danger: #c88a6a;
+  --radius: 14px;
+  --shadow: 0 18px 50px -20px rgba(0, 0, 0, 0.7);
+
+  --font-serif: var(--font-fraunces), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-inter), "Inter", "Helvetica Neue", system-ui,
+    sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  /* App-like: no pull-to-refresh / rubber-band, no iOS text auto-zoom. */
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: radial-gradient(
+    120% 80% at 50% -10%,
+    #1b3327 0%,
+    var(--ink) 55%,
+    #0a140f 100%
+  );
+  background-attachment: fixed;
+  color: var(--bone);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.serif {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+/* App frame — a centered phone-width column, matching the prototype. */
+.app-frame {
+  position: relative;
+  min-height: 100dvh;
+  max-width: 520px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  padding: 0 22px;
+}
+
+.center-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 20px;
+  min-height: 100dvh;
+}
+
+.eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--moss);
+  font-weight: 600;
+}
+
+h1.title {
+  font-size: 15vw;
+  line-height: 0.9;
+  margin: 0;
+  font-weight: 400;
+}
+@media (min-width: 520px) {
+  h1.title {
+    font-size: 76px;
+  }
+}
+
+.sub {
+  color: var(--bone-dim);
+  font-size: 15px;
+  max-width: 320px;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+}
+
+button.btn {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  background: var(--moss);
+  border: none;
+  border-radius: 100px;
+  padding: 15px 34px;
+  cursor: pointer;
+  transition: transform 0.15s, background 0.2s, opacity 0.2s;
+}
+button.btn:active {
+  transform: scale(0.96);
+}
+button.btn.ghost {
+  background: transparent;
+  color: var(--bone);
+  border: 1px solid var(--ink-3);
+}
+button.btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* A small card used to show state during Step 1 verification. */
+.card {
+  width: 100%;
+  max-width: 360px;
+  text-align: left;
+  background: var(--ink-2);
+  border: 1px solid var(--ink-3);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+}
+.card .row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 7px 0;
+  font-size: 13px;
+  border-bottom: 1px solid var(--ink-3);
+}
+.card .row:last-child {
+  border-bottom: none;
+}
+.card .row .k {
+  color: var(--bone-dim);
+  letter-spacing: 0.04em;
+}
+.card .row .v {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  word-break: break-all;
+}
+.badge {
+  display: inline-block;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 100px;
+  border: 1px solid var(--moss-deep);
+  color: var(--moss);
+}
+.badge.member {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.error {
+  color: var(--danger);
+  font-size: 13px;
+  max-width: 320px;
+}
+
+.fade-in {
+  animation: fadeIn 0.8s ease both;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Ambient sway for procedurally rendered trees (renderTree emits <g
+   class="tree-breathe">). Origin is the ground point in the SVG's 200×240
+   viewBox. Disabled under reduced-motion by the global rule below. */
+.tree-breathe {
+  transform-box: view-box;
+  transform-origin: 100px 222px;
+  animation: treeBreathe 6s ease-in-out infinite;
+}
+@keyframes treeBreathe {
+  0%,
+  100% {
+    transform: rotate(-0.6deg);
+  }
+  50% {
+    transform: rotate(0.6deg) scaleY(1.008);
+  }
+}
+
+/* ===== Step 4: plant flow + Home ========================================= */
+
+/* --- Plant flow --- */
+.flow {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  min-height: 100dvh;
+  text-align: center;
+  padding: 32px 0;
+}
+.flow-title {
+  font-size: 28px;
+  margin: 0;
+  font-weight: 500;
+}
+.flow-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.species-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  width: 100%;
+  max-width: 360px;
+}
+.species-card {
+  font-family: inherit;
+  color: var(--bone);
+  background: var(--ink-2);
+  border: 1px solid var(--ink-3);
+  border-radius: var(--radius);
+  padding: 10px 6px 12px;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.15s, opacity 0.2s;
+}
+.species-card.sel {
+  border-color: var(--moss);
+  transform: translateY(-2px);
+}
+.species-card.locked {
+  opacity: 0.45;
+  cursor: default;
+}
+.species-card .sp-mini {
+  width: 70px;
+  height: 84px;
+  margin: 0 auto;
+  display: block;
+}
+.species-card .sp-name {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  margin-top: 4px;
+  color: var(--bone-dim);
+}
+
+.text-input {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  text-align: center;
+  color: var(--bone);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--ink-3);
+  padding: 10px 6px;
+  width: min(80vw, 300px);
+  outline: none;
+}
+.text-input:focus {
+  border-color: var(--moss);
+}
+
+.place-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  max-width: 360px;
+}
+.place-chip {
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--bone-dim);
+  background: var(--ink-2);
+  border: 1px solid var(--ink-3);
+  border-radius: 100px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+.place-chip.sel {
+  border-color: var(--moss);
+  color: var(--moss);
+}
+
+.plant-stage {
+  width: min(70vw, 240px);
+  height: min(84vw, 288px);
+}
+.plant-stage-svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* --- Home --- */
+.home {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100dvh;
+  padding: 22px 0 40px;
+  gap: 10px;
+}
+.home-top {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+.greeting {
+  color: var(--bone-dim);
+  letter-spacing: 0.04em;
+}
+.resources {
+  display: flex;
+  gap: 14px;
+  font-variant-numeric: tabular-nums;
+  color: var(--bone);
+}
+.home-stage {
+  width: min(74vw, 300px);
+  height: min(80vw, 320px);
+  margin-top: 8px;
+}
+.home-info {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.stage-chip {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--moss);
+  border: 1px solid var(--moss-deep);
+  border-radius: 100px;
+  padding: 4px 12px;
+}
+.stage-chip .glyph {
+  filter: saturate(1.2);
+}
+.tree-name {
+  font-size: 34px;
+  margin: 2px 0 0;
+  font-weight: 500;
+}
+.tree-meta {
+  color: var(--bone-dim);
+  font-size: 13px;
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+.health-line {
+  margin-top: 10px;
+  width: min(70vw, 240px);
+}
+.health-track {
+  height: 4px;
+  background: var(--ink-3);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.health-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.6s ease, background 0.4s;
+}
+.health-label {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--bone-dim);
+  margin-top: 7px;
+  display: flex;
+  justify-content: space-between;
+}
+.home-actions {
+  margin-top: 18px;
+}
+.dev-warp {
+  margin-top: auto;
+  padding-top: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--bone-dim);
+  letter-spacing: 0.08em;
+}
+.dev-warp button {
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--bone-dim);
+  background: transparent;
+  border: 1px dashed var(--ink-3);
+  border-radius: 8px;
+  padding: 5px 9px;
+  cursor: pointer;
+}
+.dev-warp button:hover {
+  color: var(--moss);
+  border-color: var(--moss-deep);
+}
+
+/* ===== Step 6: Grove, account gate, nav ================================== */
+
+.linklike {
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--moss);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  padding: 4px;
+}
+.linklike.dim {
+  color: var(--bone-dim);
+}
+
+/* Fixed bottom nav; Home/Grove pad their bottoms to clear it. */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  justify-content: space-around;
+  padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, var(--ink) 60%, transparent);
+  z-index: 20;
+}
+.bottom-nav button {
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 18px;
+  background: transparent;
+  border: none;
+  color: var(--bone-dim);
+  cursor: pointer;
+  opacity: 0.7;
+}
+.bottom-nav button span {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.bottom-nav button.active {
+  color: var(--moss);
+  opacity: 1;
+}
+.bottom-nav button.soon {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.home,
+.grove {
+  padding-bottom: 84px;
+}
+
+/* --- Grove --- */
+.grove {
+  flex: 1;
+  min-height: 100dvh;
+  padding-top: 24px;
+  display: flex;
+  flex-direction: column;
+}
+.grove-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+.grove-title {
+  font-size: 26px;
+  margin: 0;
+  font-weight: 500;
+}
+.grove-sub {
+  color: var(--bone-dim);
+  font-size: 13px;
+  margin: 2px 0 0;
+}
+.chip-btn {
+  font-family: inherit;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  background: var(--moss);
+  border: none;
+  border-radius: 100px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+.chip-btn.ghost {
+  background: transparent;
+  color: var(--bone-dim);
+  border: 1px solid var(--ink-3);
+}
+.grove-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.grove-card {
+  background: var(--ink-2);
+  border: 1px solid var(--ink-3);
+  border-radius: var(--radius);
+  padding: 12px;
+  text-align: center;
+}
+.grove-mini {
+  width: 100%;
+  height: 120px;
+}
+.gname {
+  font-size: 16px;
+  margin-top: 4px;
+}
+.gmeta {
+  font-size: 11px;
+  color: var(--bone-dim);
+  margin-top: 2px;
+}
+.gtier {
+  font-size: 11px;
+  color: var(--moss);
+  margin-top: 4px;
+  letter-spacing: 0.04em;
+}
+
+/* Plant slot */
+.plant-slot {
+  font-family: inherit;
+  color: var(--bone);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 190px;
+  border-style: dashed;
+}
+.plant-slot.locked {
+  opacity: 0.55;
+  cursor: default;
+}
+.plant-slot.gate {
+  border-color: var(--gold);
+}
+.plant-slot.plantable {
+  border-color: var(--moss);
+}
+.slot-plus {
+  font-size: 30px;
+  color: var(--moss);
+  line-height: 1;
+}
+.plant-slot.gate .slot-plus {
+  color: var(--gold);
+}
+.slot-text {
+  font-size: 13px;
+  line-height: 1.4;
+}
+.slot-dim {
+  color: var(--bone-dim);
+  font-size: 11px;
+}
+
+/* --- Account sheet --- */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(6, 12, 9, 0.72);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 40;
+  animation: fadeIn 0.25s ease both;
+}
+.sheet {
+  width: 100%;
+  max-width: 520px;
+  background: var(--ink-2);
+  border: 1px solid var(--ink-3);
+  border-radius: 22px 22px 0 0;
+  padding: 28px 22px calc(28px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+}
+.sheet .text-input {
+  width: 100%;
+  max-width: 320px;
+}
+
+.error-float {
+  position: fixed;
+  bottom: 88px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+}
+
+/* ===== Step 7: Journal / Inspect / Profile sheets ======================== */
+
+.stage-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  width: min(74vw, 300px);
+}
+.grove-head-id {
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+  color: inherit;
+}
+
+.journal-sheet {
+  max-height: 88dvh;
+  overflow-y: auto;
+}
+.journal-mini {
+  width: min(50vw, 190px);
+  height: min(58vw, 220px);
+}
+.p-avatar {
+  font-size: 40px;
+}
+.owner-chip {
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--moss);
+  background: transparent;
+  border: 1px solid var(--moss-deep);
+  border-radius: 100px;
+  padding: 5px 12px;
+  cursor: pointer;
+}
+
+.jstats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px 18px;
+  width: 100%;
+  max-width: 340px;
+  margin: 4px 0;
+}
+.jstat {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--ink-3);
+  padding: 6px 0;
+  font-size: 13px;
+}
+.jstat .k {
+  color: var(--bone-dim);
+  letter-spacing: 0.04em;
+}
+.jstat .v {
+  font-variant-numeric: tabular-nums;
+}
+
+.timeline {
+  width: 100%;
+  max-width: 340px;
+  text-align: left;
+  margin-top: 6px;
+}
+.tl-head {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--bone-dim);
+  margin-bottom: 8px;
+}
+.timeline ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.timeline li {
+  border-left: 2px solid var(--ink-3);
+  padding-left: 12px;
+}
+.tl-date {
+  font-size: 10px;
+  color: var(--bone-dim);
+  letter-spacing: 0.04em;
+}
+.tl-ev {
+  font-size: 14px;
+}
+
+.p-grove {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  width: 100%;
+  max-width: 340px;
+}
+.p-tree {
+  background: var(--ink-3);
+  border: none;
+  border-radius: 10px;
+  padding: 8px 4px;
+  cursor: pointer;
+  color: var(--bone);
+}
+.p-mini {
+  width: 100%;
+  height: 80px;
+}
+.pn {
+  font-size: 12px;
+  margin-top: 2px;
+}
+.pa {
+  font-size: 10px;
+  color: var(--bone-dim);
+}
+
+/* ===== Step 8: Forest map =============================================== */
+
+/* Full-screen Earth — breaks out of the phone-width column entirely. */
+.forest {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  background: #05080c;
+}
+.forest-canvas {
+  position: absolute;
+  inset: 0;
+}
+.forest-canvas .maplibregl-canvas {
+  outline: none;
+}
+.forest-hud {
+  position: absolute;
+  top: calc(16px + env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  pointer-events: none;
+  text-align: center;
+}
+.forest-title {
+  font-size: 17px;
+  color: var(--bone);
+  letter-spacing: 0.04em;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+}
+.forest-count {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--moss);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
+}
+.my-grove-btn {
+  position: absolute;
+  left: 16px;
+  bottom: 92px;
+  z-index: 15;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--ink);
+  background: var(--moss);
+  border: none;
+  border-radius: 100px;
+  padding: 10px 16px;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+.my-grove-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+/* Tone MapLibre's default controls to the forest palette. */
+.forest .maplibregl-ctrl-group {
+  background: var(--ink-2);
+  border: 1px solid var(--ink-3);
+}
+.forest .maplibregl-ctrl-group button + button {
+  border-top-color: var(--ink-3);
+}
+.forest .maplibregl-ctrl button .maplibregl-ctrl-icon {
+  filter: invert(0.85) sepia(0.2) hue-rotate(70deg);
+}
+
+/* ===== Step 8b: plant on the globe ====================================== */
+.plant-place {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  background: #05080c;
+}
+.plant-map-canvas {
+  position: absolute;
+  inset: 0;
+}
+.plant-pin {
+  font-size: 28px;
+  line-height: 1;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.8));
+  cursor: pointer;
+}
+.plant-place-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  padding: 22px 20px calc(24px + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, rgba(5, 8, 12, 0.96) 55%, transparent);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+.ppb-text {
+  font-size: 19px;
+  color: var(--bone);
+}
+.ppb-note {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--bone-dim);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.05ms !important;
+  }
+}
