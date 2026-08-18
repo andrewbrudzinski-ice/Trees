@@ -16,20 +16,18 @@ export async function GET() {
   try {
     return await home();
   } catch (e) {
-    // Never 500 the render-state route — degrade to "not signed in" and surface
-    // a short diagnostic so a misconfigured deploy is debuggable, not a brick.
-    return NextResponse.json(
-      { authed: false, diag: (e as Error)?.message ?? String(e) },
-      { status: 200 },
-    );
+    // Never 500 the render-state route — degrade to "not signed in" so a
+    // transient/misconfigured backend can't brick the app. Log server-side only.
+    console.error("[/api/home]", e);
+    return NextResponse.json({ authed: false }, { status: 200 });
   }
 }
 
 async function home() {
-  const hasUrl = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const hasKey = !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!hasUrl || !hasKey) {
-    return NextResponse.json({ authed: false, diag: "env-missing", hasUrl, hasKey }, { status: 200 });
+  // Guard a misconfigured deploy explicitly (the #1 first-deploy footgun).
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    console.error("[/api/home] Supabase env vars missing on the server runtime");
+    return NextResponse.json({ authed: false }, { status: 200 });
   }
 
   const supabase = await createClient();
