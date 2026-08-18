@@ -812,29 +812,34 @@ button.btn:disabled {
 }
 .forest-hud {
   position: absolute;
-  top: calc(16px + env(safe-area-inset-top));
+  top: calc(14px + env(safe-area-inset-top));
   left: 50%;
   transform: translateX(-50%);
   z-index: 15;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
   pointer-events: none;
   text-align: center;
+  padding: 10px 20px;
+  border-radius: 16px;
+  background: rgba(6, 12, 9, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(143, 181, 122, 0.18);
 }
 .forest-title {
-  font-size: 17px;
+  font-size: 16px;
   color: var(--bone);
   letter-spacing: 0.04em;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
 }
 .forest-count {
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   color: var(--moss);
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
+  font-variant-numeric: tabular-nums;
 }
 .my-grove-btn {
   position: absolute;
@@ -909,6 +914,69 @@ button.btn:disabled {
   font-size: 11px;
   letter-spacing: 0.06em;
   color: var(--bone-dim);
+}
+
+/* ===== Owner admin dashboard ============================================ */
+.admin {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 28px 20px 60px;
+  min-height: 100dvh;
+}
+.admin-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 20px;
+}
+.admin-head h1 {
+  font-size: 24px;
+  margin: 0;
+  font-weight: 500;
+}
+.admin-card {
+  background: var(--ink-2);
+  border: 1px solid var(--ink-3);
+  border-radius: var(--radius);
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 340px;
+}
+.admin-group {
+  margin-bottom: 22px;
+}
+.admin-group-title {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--moss);
+  margin: 0 0 10px;
+}
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+}
+.admin-tile {
+  background: var(--ink-2);
+  border: 1px solid var(--ink-3);
+  border-radius: 12px;
+  padding: 16px;
+}
+.admin-num {
+  font-family: var(--font-serif);
+  font-size: 30px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--bone);
+}
+.admin-label {
+  font-size: 12px;
+  color: var(--bone-dim);
+  margin-top: 6px;
+  letter-spacing: 0.03em;
 }
 
 @media (prefers-reduced-motion: reduce) {
