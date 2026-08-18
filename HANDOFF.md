@@ -312,11 +312,37 @@ Rate-limiting is effectively provided by daily idempotency (check-in) and econom
 caps (water/seed balances); a dedicated token-bucket limiter on the RPCs is a
 sensible production fast-follow.
 
-## Next — Step 10: Ship + instrument (roadmap §17.10)
+## Step 10 — Ship + instrument (roadmap §17.10) — BUILT
 
-Deploy the app (e.g. Vercel), point it at the Supabase project, set the env vars
-(and a production Supabase project with `dev_mode=false`); instrument the
-day-1→day-7 funnel and guest→signup conversion; then tune the second-tree cost
-(`SECOND_TREE_COST`, spec §6a/§12) from real data. Optional polish available any
-time: MapTiler key for nicer tiles, map-based server aggregation for scale, and a
-live-eyes tuning pass on the globe's look.
+Offline-verified (46 unit tests + typecheck + lint + `next build` all green).
+Live check needs migration `0009` applied.
+
+- **Migration `0009_analytics.sql`**: `analytics_events` — an append-only,
+  write-only-for-clients event log (insert own / anonymous; no client SELECT).
+  No PII. Retention/conversion come mostly from the gameplay tables; this covers
+  the pre-auth funnel bits.
+- **`src/lib/analytics.ts`** `track()` — best-effort, fire-and-forget. Wired for
+  `welcome_viewed`, `guest_started`, `tree_planted`, `gate_signup_opened`,
+  `signup_completed`.
+- **`DEPLOY.md`** — production deploy guide (prod Supabase project, migrations via
+  CLI, env vars, `dev_mode=false`, email-confirmation decision, Vercel steps,
+  smoke test, readiness checklist).
+- **`docs/METRICS.md`** — SQL for the acquisition funnel, D0–D6 retention,
+  guest→member conversion, and second-tree-gate timing (for tuning
+  `SECOND_TREE_COST`). README refreshed to the finished MVP.
+- **`scripts/verify-step10.mjs`**: analytics is write-only + self-scoped.
+
+## MVP COMPLETE 🌳
+
+Steps 1–10 are built; 1–9 (and 8b) are live-verified against Supabase, 10 pending
+its `0009` live check. What remains is operational / iterative, not core build:
+
+- **Deploy** following `DEPLOY.md` (prod Supabase project + Vercel), then watch
+  `docs/METRICS.md` and tune `SECOND_TREE_COST` from real data.
+- **Optional polish, any time:** a `NEXT_PUBLIC_MAPTILER_KEY` for nicer tiles; a
+  live-eyes tuning pass on the globe's look (best at a computer); server-side map
+  aggregation / vector tiles for true planet-scale; the email-confirmation signup
+  state; a dedicated RPC rate-limiter.
+
+If picking this back up: read this file top-to-bottom for the full state, then
+`supabase/SETUP.md` for the migration/verify sequence per step.

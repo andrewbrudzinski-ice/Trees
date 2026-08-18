@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import type { HomePayload } from "@/lib/tree/api";
@@ -13,6 +13,7 @@ import { BottomNav, type Tab } from "@/components/BottomNav";
 import { TreeSheet, type TreeTarget } from "@/components/TreeSheet";
 import { ProfileSheet } from "@/components/ProfileSheet";
 import { ForestMap } from "@/components/ForestMap";
+import { track } from "@/lib/analytics";
 
 /**
  * The Tree — app shell (roadmap Steps 4–6).
@@ -61,13 +62,25 @@ export default function App() {
 
   const speciesByKey = useMemo(() => new Map(species.map((s) => [s.key, s])), [species]);
 
+  // Funnel: welcome view (pre-auth), once.
+  const welcomeTracked = useRef(false);
+  useEffect(() => {
+    if (supabase && payload && payload.authed === false && !welcomeTracked.current) {
+      welcomeTracked.current = true;
+      track(supabase, "welcome_viewed");
+    }
+  }, [supabase, payload]);
+
   const plantAsGuest = async () => {
     if (!supabase) return;
     setBusy(true);
     setError(null);
-    const { error: e } = await supabase.auth.signInAnonymously();
+    const { data, error: e } = await supabase.auth.signInAnonymously();
     if (e) setError(e.message + " — is anonymous sign-in enabled in Supabase?");
-    else await refetchHome();
+    else {
+      track(supabase, "guest_started", data.user?.id ?? null);
+      await refetchHome();
+    }
     setBusy(false);
   };
 
@@ -177,6 +190,7 @@ export default function App() {
           onPlanted={async () => {
             setPlantingSecond(false);
             setTab("home");
+            if (supabase) track(supabase, "tree_planted", myUid);
             await refetchHome();
           }}
         />
@@ -201,7 +215,10 @@ export default function App() {
               payload={payload}
               speciesByKey={speciesByKey}
               onPlantSlot={() => setPlantingSecond(true)}
-              onCreateAccount={() => setAccount("signup")}
+              onCreateAccount={() => {
+                if (supabase) track(supabase, "gate_signup_opened", myUid);
+                setAccount("signup");
+              }}
               onSignOut={signOut}
               onOpenTree={openTreeById}
               onOpenProfile={() => myUid && setSheet({ type: "profile", userId: myUid })}

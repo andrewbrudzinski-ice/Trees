@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { track } from "@/lib/analytics";
 
 /**
  * Account sheet — plant-first signup / sign-in (spec §6a, §7).
@@ -60,6 +61,7 @@ export function Account({
       // Persist the chosen display name (client may write only this column).
       const { data: who } = await supabase.auth.getUser();
       if (who.user) await supabase.from("profiles").update({ display_name: name.trim() }).eq("id", who.user.id);
+      track(supabase, "signup_completed", who.user?.id ?? null);
     }
 
     await onDone();

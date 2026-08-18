@@ -10,8 +10,9 @@ procedural tree renderer and the growth/age math.
 ## Stack
 
 - **Next.js (App Router) + React + TypeScript**
-- **Supabase** — Postgres, Auth (incl. anonymous/guest), Row-Level Security, Edge Functions
-- MapLibre GL (map), Framer Motion (transitions) — arrive in later roadmap steps
+- **Supabase** — Postgres, Auth (incl. anonymous/guest), Row-Level Security
+- **MapLibre GL** — a full-screen globe Earth with satellite imagery + 3D terrain
+  (keyless by default; a `NEXT_PUBLIC_MAPTILER_KEY` upgrades the tiles)
 
 ## Getting started
 
@@ -25,46 +26,61 @@ procedural tree renderer and the growth/age math.
    npm run dev
    ```
 
-   Open <http://localhost:3000>.
+   Open <http://localhost:3000>. To **deploy**, see **[`DEPLOY.md`](DEPLOY.md)**;
+   to analyze the funnel, **[`docs/METRICS.md`](docs/METRICS.md)**; for the current
+   working state and next steps, **[`HANDOFF.md`](HANDOFF.md)**.
 
-## Roadmap status (spec §17)
+   Each roadmap step has a one-command live check, e.g. `node scripts/verify-step9.mjs`.
 
-The app is built **one roadmap step at a time**, in order.
+## Roadmap status (spec §17) — MVP complete
 
-- [x] **Step 1 — Foundation.** Next.js + TypeScript scaffold; Supabase clients
-      (browser/server/middleware) via `@supabase/ssr`; `profiles` table with RLS;
-      a trigger that auto-creates a profile for every user; **anonymous auth** so a
-      first plant creates a guest identity with no signup. The home page is a
-      temporary verification screen that exercises guest sign-in → profile → RLS.
-- [ ] Step 2 — Tree model + growth/age/health math (server-authoritative) + dev time-warp
-- [ ] Step 3 — Procedural SVG renderer (port of `renderTree()`)
-- [ ] Step 4 — Plant-first onboarding + Home + check-in/seed ledger
-- [ ] Step 5 — Health + water
-- [ ] Step 6 — Second tree + Grove + account gate (anonymous→email linking)
-- [ ] Step 7 — Journal + Inspect + Profile + Admire
-- [ ] Step 8 — Map (MapLibre, clustering, ambient forest)
-- [ ] Step 9 — Polish + anti-cheat pass
-- [ ] Step 10 — Ship + instrument + tune
+Built **one roadmap step at a time**, in order; each verified live against Supabase.
+
+- [x] **Step 1 — Foundation:** scaffold, `@supabase/ssr` clients, `profiles` + RLS,
+      auto-profile trigger, **anonymous/guest auth**.
+- [x] **Step 2 — Tree model + growth math:** `trees`/`tree_events`, server-authoritative
+      age/growth/health as pure functions (unit-tested), dev time-warp.
+- [x] **Step 3 — Procedural SVG renderer:** typed port of `renderTree()`; a 7/365/2000-day
+      tree reads distinctly.
+- [x] **Step 4 — Plant-first onboarding + Home:** guest plant flow, Home, idempotent
+      check-in + seed ledger.
+- [x] **Step 5 — Health + water:** `water()` RPC + ledger; Home's second action.
+- [x] **Step 6 — Second tree + Grove + account gate:** state-aware plant slot,
+      email signup with **anonymous→member linking** (seeds + first tree carry over).
+- [x] **Step 7 — Journal + Inspect + Profile + Admire:** owner-only health/timeline,
+      public inspect/profiles via scoped views, one-per-user admire.
+- [x] **Step 8 — The Forest map:** full-screen **globe Earth** (satellite + 3D terrain),
+      density heatmap → clusters → individual trees; **8b:** plant on the globe with
+      server-side location **privacy fuzzing**.
+- [x] **Step 9 — Polish + anti-cheat:** trees mutate only via RPCs (no plant-cost or
+      age cheat), balances/`is_guest` column-locked, reduced-motion + mobile polish.
+- [x] **Step 10 — Ship + instrument:** funnel/analytics, `DEPLOY.md`, `docs/METRICS.md`.
 
 ## Project layout
 
 ```
 src/
   app/
-    layout.tsx        Root layout, fonts (Fraunces serif + Inter), metadata
-    page.tsx          Step 1 verification screen (temporary)
-    globals.css       "Naturalist observatory" design tokens (ported from prototype)
+    page.tsx              App shell: welcome → plant → Home / Grove / Forest
+    layout.tsx            Root layout, fonts, MapLibre CSS
+    globals.css           "Naturalist observatory" design tokens + all UI styles
+    api/home/route.ts     Server-authoritative render state for the signed-in user
+    api/dev/time-warp/    Dev-only time-warp (guarded; inert in production)
+  components/             Home, Grove, PlantFlow, PlantMap, ForestMap,
+                          TreeSheet (Journal/Inspect), ProfileSheet, Account, …
   lib/
-    supabase/
-      client.ts       Browser Supabase client
-      server.ts       Server Component / Route Handler client
-      middleware.ts   Session-refresh helper
-    types.ts          Shared DB-mirroring types
-  middleware.ts       Next.js middleware entry (refreshes the auth session)
-supabase/
-  migrations/
-    0001_foundation.sql   profiles + RLS + auto-profile trigger
-  SETUP.md                Step-by-step Supabase setup
+    tree/
+      growth.ts           Server-authoritative age/growth/health (pure, tested)
+      render.ts           Procedural SVG tree renderer (pure, tested)
+      economy.ts          SECOND_TREE_COST + helpers   events.ts  geo.ts  mapstyle.ts
+      api.ts              Shapes for the app's routes/views
+    supabase/{client,server,middleware}.ts   @supabase/ssr clients
+    analytics.ts          Best-effort funnel tracking
+    types.ts              DB-mirroring types
+supabase/migrations/      0001 foundation … 0009 analytics (apply in order)
+supabase/SETUP.md         Per-step Supabase setup
+scripts/verify-step*.mjs  One-command live checks per step
+DEPLOY.md  docs/METRICS.md  HANDOFF.md
 ```
 
 ## Core principles (keep visible on every decision)

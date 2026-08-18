@@ -155,3 +155,15 @@ When you move to Step 2, apply the next migration the same way:
 2. No new dashboard toggles.
 3. Verify: `node scripts/verify-step9.mjs` → should end with "🛡️ Step 9 verified".
    (The earlier verify scripts still pass — they now plant/age via the RPCs.)
+
+---
+
+## Step 10 (funnel instrumentation) — one migration
+
+1. **SQL Editor → New query**, paste all of `supabase/migrations/0009_analytics.sql`,
+   and **Run**. It adds the write-only `analytics_events` log. Additive, idempotent.
+2. No new dashboard toggles.
+3. Verify: `node scripts/verify-step10.mjs` → should end with "📈 Step 10 verified".
+
+For deploying to production, see **[`../DEPLOY.md`](../DEPLOY.md)**; for the funnel
+queries, **[`../docs/METRICS.md`](../docs/METRICS.md)**.
