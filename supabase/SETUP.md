@@ -167,3 +167,14 @@ When you move to Step 2, apply the next migration the same way:
 
 For deploying to production, see **[`../DEPLOY.md`](../DEPLOY.md)**; for the funnel
 queries, **[`../docs/METRICS.md`](../docs/METRICS.md)**.
+
+---
+
+## Step 10b (owner analytics dashboard) — one migration
+
+1. **SQL Editor → New query**, paste `supabase/migrations/0010_admin_stats.sql`,
+   and **Run**. It adds the owner-only `admin_stats()` / `claim_admin()` functions.
+2. Open **`/admin`** on your site (e.g. `https://your-app.vercel.app/admin`), sign
+   in with your account, and tap **Claim owner access** (first claim wins — do it
+   before sharing the app widely). You'll then see live user/activity/forest counts.
+   Only the owner account can read them.
