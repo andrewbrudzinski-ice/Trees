@@ -80,7 +80,7 @@ if (tree) {
 // --- Profiles: is_guest / seeds / water are server-owned -------------------
 const { error: guestErr } = await a.from("profiles").update({ is_guest: false }).eq("id", uidA);
 ok("Cannot self-set is_guest", !!guestErr, guestErr ? "" : "→ allowed!");
-await a.from("profiles").update({ seeds: 99999 }).eq("id", uidA).catch(() => {});
+await a.from("profiles").update({ seeds: 99999 }).eq("id", uidA);
 const { data: prof } = await a.from("profiles").select("seeds").eq("id", uidA).single();
 ok("Cannot mint seeds via profiles", (prof?.seeds ?? 0) < 99999, `(seeds=${prof?.seeds})`);
 
