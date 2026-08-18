@@ -4,24 +4,10 @@ import { useMemo, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { renderTree, speciesVisual } from "@/lib/tree/render";
 import type { Species } from "@/lib/types";
-
-/** A small curated set of real places to plant (the real map arrives in Step 8). */
-const CITIES: { name: string; lat: number; lng: number }[] = [
-  { name: "Detroit", lat: 42.3314, lng: -83.0458 },
-  { name: "New York", lat: 40.7128, lng: -74.006 },
-  { name: "London", lat: 51.5072, lng: -0.1276 },
-  { name: "Paris", lat: 48.8566, lng: 2.3522 },
-  { name: "Lagos", lat: 6.5244, lng: 3.3792 },
-  { name: "Tokyo", lat: 35.6762, lng: 139.6503 },
-  { name: "Mumbai", lat: 19.076, lng: 72.8777 },
-  { name: "São Paulo", lat: -23.5558, lng: -46.6396 },
-  { name: "Sydney", lat: -33.8688, lng: 151.2093 },
-  { name: "Cape Town", lat: -33.9249, lng: 18.4241 },
-  { name: "Mexico City", lat: 19.4326, lng: -99.1332 },
-  { name: "Cairo", lat: 30.0444, lng: 31.2357 },
-];
+import { PlantMap } from "./PlantMap";
 
 type Step = "species" | "name" | "place" | "planting";
+type Pin = { lat: number; lng: number; region: string };
 
 /** A miniature preview of a species (a ~3-day-old sapling). */
 function speciesPreview(species: Species): string {
@@ -48,25 +34,26 @@ export function PlantFlow({
   const [step, setStep] = useState<Step>("species");
   const [chosen, setChosen] = useState<string>(free[0]?.key ?? "maple");
   const [name, setName] = useState("");
-  const [place, setPlace] = useState(CITIES[0]);
+  const [pin, setPin] = useState<Pin | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const chosenSpecies = species.find((s) => s.key === chosen);
 
   async function plant() {
-    if (!chosenSpecies) return;
+    if (!chosenSpecies || !pin) return;
     setBusy(true);
     setError(null);
     setStep("planting");
-    // plant_tree() is the sanctioned path: it enforces first-free / second-cost,
-    // logs the 'planted' event, and (for a paid tree) deducts seeds server-side.
+    // plant_tree() is the sanctioned path: enforces first-free / second-cost,
+    // logs 'planted', deducts seeds for a paid tree, and fuzzes the coordinate
+    // server-side (0007) so the exact spot is never stored.
     const { error: rpcErr } = await supabase.rpc("plant_tree", {
       p_species: chosen,
       p_name: name.trim() || "My Tree",
-      p_lat: place.lat,
-      p_lng: place.lng,
-      p_region: place.name,
+      p_lat: pin.lat,
+      p_lng: pin.lng,
+      p_region: pin.region,
     });
     if (rpcErr) {
       setError(rpcErr.message);
@@ -74,7 +61,6 @@ export function PlantFlow({
       setStep("place");
       return;
     }
-    // Let the seed settle, then into Home.
     setTimeout(onPlanted, 2200);
   }
 
@@ -92,8 +78,41 @@ export function PlantFlow({
     return (
       <div className="center-screen">
         <div className="plant-stage" dangerouslySetInnerHTML={{ __html: preview }} />
-        <p className="sub fade-in">You planted {name.trim() || "your tree"} in {place.name}.</p>
+        <p className="sub fade-in">
+          You planted {name.trim() || "your tree"}
+          {pin ? ` near ${pin.region}` : ""}.
+        </p>
         <p className="eyebrow fade-in">A seed takes root…</p>
+      </div>
+    );
+  }
+
+  // The location step is a full-screen globe — pick where your tree lives.
+  if (step === "place") {
+    return (
+      <div className="plant-place">
+        <PlantMap onChange={(lat, lng, region) => setPin({ lat, lng, region })} />
+        <div className="plant-place-bar">
+          <div className="ppb-text serif">
+            {pin ? (
+              <>
+                Plant <b>{name.trim() || "your tree"}</b> near <b>{pin.region}</b>
+              </>
+            ) : (
+              "Tap the globe to choose where it lives"
+            )}
+          </div>
+          <div className="ppb-note">Its exact spot stays private — trees show only their area.</div>
+          {error && <p className="error">{error}</p>}
+          <div className="flow-actions">
+            <button className="btn ghost" onClick={() => setStep("name")} disabled={busy}>
+              Back
+            </button>
+            <button className="btn" onClick={plant} disabled={busy || !pin}>
+              {busy ? "Planting…" : "Plant here"}
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -145,33 +164,6 @@ export function PlantFlow({
             </button>
             <button className="btn" onClick={() => setStep("place")} disabled={!name.trim()}>
               Next
-            </button>
-          </div>
-        </>
-      )}
-
-      {step === "place" && (
-        <>
-          <h2 className="flow-title serif">Where should it grow?</h2>
-          <p className="sub">Pick a place on Earth. (The full map arrives soon.)</p>
-          <div className="place-grid">
-            {CITIES.map((c) => (
-              <button
-                key={c.name}
-                className={`place-chip${place.name === c.name ? " sel" : ""}`}
-                onClick={() => setPlace(c)}
-              >
-                {c.name}
-              </button>
-            ))}
-          </div>
-          {error && <p className="error">{error}</p>}
-          <div className="flow-actions">
-            <button className="btn ghost" onClick={() => setStep("name")} disabled={busy}>
-              Back
-            </button>
-            <button className="btn" onClick={plant} disabled={busy}>
-              {busy ? "Planting…" : `Plant in ${place.name}`}
             </button>
           </div>
         </>

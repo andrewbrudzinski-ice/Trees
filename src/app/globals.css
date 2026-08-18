@@ -847,6 +847,48 @@ button.btn:disabled {
   filter: invert(0.85) sepia(0.2) hue-rotate(70deg);
 }
 
+/* ===== Step 8b: plant on the globe ====================================== */
+.plant-place {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  background: #05080c;
+}
+.plant-map-canvas {
+  position: absolute;
+  inset: 0;
+}
+.plant-pin {
+  font-size: 28px;
+  line-height: 1;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.8));
+  cursor: pointer;
+}
+.plant-place-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  padding: 22px 20px calc(24px + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, rgba(5, 8, 12, 0.96) 55%, transparent);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+.ppb-text {
+  font-size: 19px;
+  color: var(--bone);
+}
+.ppb-note {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--bone-dim);
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.001ms !important;

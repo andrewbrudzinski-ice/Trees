@@ -129,3 +129,14 @@ When you move to Step 2, apply the next migration the same way:
    `tree_public_events`, `profile_public`. Additive and idempotent.
 2. No new dashboard toggles.
 3. Verify: `node scripts/verify-step7.mjs` → should end with "🌿 Step 7 verified".
+
+---
+
+## Step 8b (plant-location privacy) — one migration
+
+1. **SQL Editor → New query**, paste all of
+   `supabase/migrations/0007_plant_location_privacy.sql`, and **Run**. It replaces
+   `plant_tree()` so stored coordinates are fuzzed to an area (~1 km). Additive
+   and idempotent.
+2. No new dashboard toggles.
+3. Verify: `node scripts/verify-step8b.mjs` → should end with "📍 Step 8b verified".

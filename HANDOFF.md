@@ -264,13 +264,27 @@ screenshotted here. Verified structurally (typecheck + production build + a
 headless smoke test showed WebGL2 available and **no config/JS errors**). See it
 live: `npm run dev` → plant a tree → open **Forest**.
 
+## Step 8b — Plant on the globe + location privacy — BUILT
+
+Offline-verified (46 unit tests + typecheck + lint + `next build` all green).
+Live check needs migration `0007` applied.
+
+- **Migration `0007_plant_location_privacy.sql`**: `plant_tree()` now **fuzzes the
+  coordinate server-side** — jitters ~±1 km then snaps to a 2-decimal (~1 km)
+  grid — so an exact address is never stored. Client can't opt out. All the gate
+  logic is unchanged.
+- **`PlantMap`** (`src/components/PlantMap.tsx`): the same globe Earth as a
+  pin-drop picker — tap the planet to choose where your tree lives; an offline
+  `nearestRegion()` labels the area (no external geocoder). The plant flow's
+  location step is now this full-screen globe (city chips removed).
+- **`src/lib/tree/mapstyle.ts`**: the satellite/terrain/globe basemap, now shared
+  by `ForestMap` and `PlantMap`. `geo.ts` gains `nearestRegion` (+ tests).
+- `scripts/verify-step8b.mjs`: plants at a precise coordinate and asserts the
+  stored point is snapped to the grid, not exact, and stays within ~1 km.
+
 Scale path to millions of trees (spec §13, staged): the `trees_geo_idx` GIST
 index is in place; MVP uses client-side heatmap + clustering, and the next scale
-step swaps in a **server aggregation RPC / vector tiles** by bbox+zoom. Also
-still open: **map-based plant-pin** onboarding with **privacy fuzzing** (snap/
-round the stored coordinate to an area, never a home address) — the plant flow
-currently uses the Step-4 city picker (already area-level, so privacy is fine for
-now); the globe is ready to host pin-drop planting next.
+step swaps in a **server aggregation RPC / vector tiles** by bbox+zoom.
 
 ## Next — Step 9: Polish + anti-cheat pass (roadmap §17.9)
 

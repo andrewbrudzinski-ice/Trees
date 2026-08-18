@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { treesToGeoJSON, boundsOf, ambientForest, CITY_ANCHORS, type InspectPoint } from "./geo";
+import { treesToGeoJSON, boundsOf, ambientForest, nearestRegion, CITY_ANCHORS, type InspectPoint } from "./geo";
 
 const rows: InspectPoint[] = [
   { id: "t1", owner_id: "me", name: "A", species_key: "maple", lat: 42.3, lng: -83, admire_count: 2 },
@@ -44,5 +44,18 @@ describe("ambientForest", () => {
     const a = ambientForest(22, 1);
     const b = ambientForest(22, 2);
     expect(a.features[0].geometry.coordinates).not.toEqual(b.features[0].geometry.coordinates);
+  });
+});
+
+describe("nearestRegion", () => {
+  it("labels a point with the nearest known city when close", () => {
+    expect(nearestRegion(42.3, -83.0)).toBe("Detroit"); // on Detroit
+    expect(nearestRegion(51.6, -0.2)).toBe("London"); // near London
+    expect(nearestRegion(35.7, 139.8)).toBe("Tokyo");
+  });
+
+  it("falls back to a coarse continent when far from any city", () => {
+    expect(nearestRegion(20, -40)).toBe("Somewhere on Earth"); // mid-Atlantic
+    expect(nearestRegion(-80, 0)).toMatch(/Earth|Africa/); // near Antarctica → coarse
   });
 });

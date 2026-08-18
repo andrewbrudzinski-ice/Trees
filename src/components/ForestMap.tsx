@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Map as MLMap, GeoJSONSource, SourceSpecification, LayerSpecification } from "maplibre-gl";
+import type { Map as MLMap, GeoJSONSource } from "maplibre-gl";
 import { treesToGeoJSON, ambientForest, boundsOf, type InspectPoint } from "@/lib/tree/geo";
+import { baseStyle, applyGlobe } from "@/lib/tree/mapstyle";
 
 /**
  * The Forest — a full-screen, world-scale Earth (roadmap §17.8, spec §13, reimagined).
@@ -19,46 +20,6 @@ import { treesToGeoJSON, ambientForest, boundsOf, type InspectPoint } from "@/li
  * The scale path to millions of trees is the existing GIST index → server
  * aggregation / vector tiles; MVP renders from the public tree_inspect view.
  */
-
-const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_KEY;
-
-/** Basemap raster + elevation sources, keyless by default. */
-function basemapSources(): Record<string, SourceSpecification> {
-  if (MAPTILER_KEY) {
-    return {
-      sat: {
-        type: "raster",
-        tiles: [`https://api.maptiler.com/tiles/satellite-v2/{z}/{x}/{y}.jpg?key=${MAPTILER_KEY}`],
-        tileSize: 256,
-        maxzoom: 20,
-        attribution: "© MapTiler © Esri",
-      },
-      dem: {
-        type: "raster-dem",
-        tiles: [`https://api.maptiler.com/tiles/terrain-rgb-v2/{z}/{x}/{y}.webp?key=${MAPTILER_KEY}`],
-        encoding: "mapbox",
-        tileSize: 256,
-        maxzoom: 12,
-      },
-    };
-  }
-  return {
-    sat: {
-      type: "raster",
-      tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
-      tileSize: 256,
-      maxzoom: 19,
-      attribution: "Imagery © Esri, Maxar, Earthstar Geographics",
-    },
-    dem: {
-      type: "raster-dem",
-      tiles: ["https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"],
-      encoding: "terrarium",
-      tileSize: 256,
-      maxzoom: 15,
-    },
-  };
-}
 
 export function ForestMap({
   supabase,
@@ -91,42 +52,13 @@ export function ForestMap({
         minZoom: 0.8,
         center: [10, 25],
         zoom: 1.3,
-        style: {
-          version: 8,
-          sources: basemapSources(),
-          layers: [
-            { id: "space", type: "background", paint: { "background-color": "#05080c" } },
-            { id: "sat", type: "raster", source: "sat" } as LayerSpecification,
-          ],
-        },
+        style: baseStyle(),
       });
       const m = map;
       mapRef.current = m;
       m.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
 
-      m.on("style.load", () => {
-        // The planet. Continuous zoom from globe to street level.
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (m as any).setProjection({ type: "globe" });
-        } catch {}
-        // Atmosphere + a soft night-sky halo around the globe.
-        try {
-          m.setSky({
-            "sky-color": "#0a1420",
-            "sky-horizon-blend": 0.5,
-            "horizon-color": "#2b4a52",
-            "horizon-fog-blend": 0.6,
-            "fog-color": "#0a1611",
-            "fog-ground-blend": 0.5,
-            "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 0.9, 6, 0.2, 10, 0],
-          });
-        } catch {}
-        // Drape the satellite imagery over real elevation.
-        try {
-          m.setTerrain({ source: "dem", exaggeration: 1.35 });
-        } catch {}
-      });
+      m.on("style.load", () => applyGlobe(m));
 
       m.on("load", async () => {
         // Real trees from the public inspect view.
