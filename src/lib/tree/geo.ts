@@ -85,6 +85,59 @@ export const CITY_ANCHORS: { name: string; lat: number; lng: number }[] = [
   { name: "Sydney", lat: -33.87, lng: 151.21 },
 ];
 
+/**
+ * Curated world cities for map labels, each with the zoom at which it appears.
+ * Big global cities show at planet view; more fill in as you fly down — so the
+ * map stays clean far out and gets oriented up close.
+ */
+export const WORLD_CITIES: { name: string; lat: number; lng: number; minZoom: number }[] = [
+  // Global tier — visible at planet view.
+  { name: "New York", lat: 40.71, lng: -74.0, minZoom: 1 },
+  { name: "Los Angeles", lat: 34.05, lng: -118.24, minZoom: 1 },
+  { name: "London", lat: 51.51, lng: -0.13, minZoom: 1 },
+  { name: "Paris", lat: 48.85, lng: 2.35, minZoom: 1 },
+  { name: "Tokyo", lat: 35.68, lng: 139.7, minZoom: 1 },
+  { name: "Beijing", lat: 39.9, lng: 116.4, minZoom: 1 },
+  { name: "Shanghai", lat: 31.23, lng: 121.47, minZoom: 1 },
+  { name: "Moscow", lat: 55.75, lng: 37.62, minZoom: 1 },
+  { name: "Delhi", lat: 28.61, lng: 77.21, minZoom: 1 },
+  { name: "Mumbai", lat: 19.08, lng: 72.88, minZoom: 1 },
+  { name: "São Paulo", lat: -23.55, lng: -46.63, minZoom: 1 },
+  { name: "Mexico City", lat: 19.43, lng: -99.13, minZoom: 1 },
+  { name: "Cairo", lat: 30.04, lng: 31.24, minZoom: 1 },
+  { name: "Lagos", lat: 6.52, lng: 3.38, minZoom: 1 },
+  { name: "Sydney", lat: -33.87, lng: 151.21, minZoom: 1 },
+  { name: "Istanbul", lat: 41.01, lng: 28.98, minZoom: 1 },
+  { name: "Jakarta", lat: -6.2, lng: 106.85, minZoom: 1 },
+  { name: "Chicago", lat: 41.88, lng: -87.63, minZoom: 1 },
+  // Regional tier — fill in once you zoom past a continent.
+  { name: "Toronto", lat: 43.7, lng: -79.42, minZoom: 3 },
+  { name: "San Francisco", lat: 37.77, lng: -122.42, minZoom: 3 },
+  { name: "Seattle", lat: 47.61, lng: -122.33, minZoom: 3 },
+  { name: "Miami", lat: 25.76, lng: -80.19, minZoom: 3 },
+  { name: "Detroit", lat: 42.33, lng: -83.05, minZoom: 3 },
+  { name: "Houston", lat: 29.76, lng: -95.37, minZoom: 3 },
+  { name: "Vancouver", lat: 49.28, lng: -123.12, minZoom: 3 },
+  { name: "Buenos Aires", lat: -34.6, lng: -58.38, minZoom: 3 },
+  { name: "Lima", lat: -12.05, lng: -77.04, minZoom: 3 },
+  { name: "Bogotá", lat: 4.71, lng: -74.07, minZoom: 3 },
+  { name: "Santiago", lat: -33.45, lng: -70.67, minZoom: 3 },
+  { name: "Madrid", lat: 40.42, lng: -3.7, minZoom: 3 },
+  { name: "Rome", lat: 41.9, lng: 12.5, minZoom: 3 },
+  { name: "Berlin", lat: 52.52, lng: 13.4, minZoom: 3 },
+  { name: "Amsterdam", lat: 52.37, lng: 4.9, minZoom: 3 },
+  { name: "Cape Town", lat: -33.92, lng: 18.42, minZoom: 3 },
+  { name: "Nairobi", lat: -1.29, lng: 36.82, minZoom: 3 },
+  { name: "Johannesburg", lat: -26.2, lng: 28.05, minZoom: 3 },
+  { name: "Dubai", lat: 25.2, lng: 55.27, minZoom: 3 },
+  { name: "Singapore", lat: 1.35, lng: 103.82, minZoom: 3 },
+  { name: "Bangkok", lat: 13.76, lng: 100.5, minZoom: 3 },
+  { name: "Seoul", lat: 37.57, lng: 126.98, minZoom: 3 },
+  { name: "Hong Kong", lat: 22.32, lng: 114.17, minZoom: 3 },
+  { name: "Melbourne", lat: -37.81, lng: 144.96, minZoom: 3 },
+  { name: "Auckland", lat: -36.85, lng: 174.76, minZoom: 3 },
+];
+
 /** Coarse continental fallback when a point is far from any known city. */
 function coarseRegion(lat: number, lng: number): string {
   if (lat > 12 && lng > -170 && lng < -50) return "North America";

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Map as MLMap, GeoJSONSource } from "maplibre-gl";
-import { treesToGeoJSON, ambientForest, boundsOf, type InspectPoint } from "@/lib/tree/geo";
+import { treesToGeoJSON, ambientForest, boundsOf, WORLD_CITIES, type InspectPoint } from "@/lib/tree/geo";
 import { baseStyle, applyGlobe } from "@/lib/tree/mapstyle";
 
 /**
@@ -62,6 +62,22 @@ export function ForestMap({
       m.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
 
       m.on("style.load", () => applyGlobe(m));
+
+      // City labels as auto-tracked DOM markers that appear progressively with
+      // zoom (no glyphs/vector tiles needed — works over the satellite basemap).
+      const labels = WORLD_CITIES.map((c) => {
+        const el = document.createElement("div");
+        el.className = "map-city-label";
+        el.textContent = c.name;
+        new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([c.lng, c.lat]).addTo(m);
+        return { el, minZoom: c.minZoom };
+      });
+      const updateLabels = () => {
+        const z = m.getZoom();
+        for (const l of labels) l.el.style.opacity = z >= l.minZoom ? "0.72" : "0";
+      };
+      updateLabels();
+      m.on("zoom", updateLabels);
 
       m.on("load", async () => {
         // Real trees from the public inspect view.
