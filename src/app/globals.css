@@ -453,6 +453,14 @@ button.btn:disabled {
 .linklike.dim {
   color: var(--bone-dim);
 }
+.welcome-links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.welcome-links .dot {
+  color: var(--bone-dim);
+}
 
 /* Fixed bottom nav; Home/Grove pad their bottoms to clear it. */
 .bottom-nav {
@@ -790,6 +798,17 @@ button.btn:disabled {
 }
 .forest-canvas .maplibregl-canvas {
   outline: none;
+}
+.map-city-label {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.92);
+  letter-spacing: 0.03em;
+  pointer-events: none;
+  white-space: nowrap;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95), 0 0 2px rgba(0, 0, 0, 0.8);
+  transition: opacity 0.3s ease;
 }
 .forest-hud {
   position: absolute;

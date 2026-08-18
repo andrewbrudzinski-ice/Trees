@@ -176,9 +176,15 @@ export default function App() {
           <button className="btn fade-in" onClick={plantAsGuest} disabled={busy}>
             {busy ? "Planting…" : "Plant your first tree"}
           </button>
-          <button className="linklike fade-in" onClick={() => setAccount("signin")} disabled={busy}>
-            I already have an account
-          </button>
+          <div className="welcome-links fade-in">
+            <button className="linklike" onClick={() => setAccount("signup")} disabled={busy}>
+              Create an account
+            </button>
+            <span className="dot">·</span>
+            <button className="linklike" onClick={() => setAccount("signin")} disabled={busy}>
+              Sign in
+            </button>
+          </div>
           {error && <p className="error fade-in">{error}</p>}
         </div>
       )}
