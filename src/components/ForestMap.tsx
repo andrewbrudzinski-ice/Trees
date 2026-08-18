@@ -21,6 +21,9 @@ import { baseStyle, applyGlobe } from "@/lib/tree/mapstyle";
  * aggregation / vector tiles; MVP renders from the public tree_inspect view.
  */
 
+const prefersReducedMotion = () =>
+  typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
 export function ForestMap({
   supabase,
   myUid,
@@ -146,7 +149,7 @@ export function ForestMap({
           const src = m.getSource("trees") as GeoJSONSource;
           const zoom = await src.getClusterExpansionZoom(f.properties?.cluster_id);
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          m.flyTo({ center: (f.geometry as any).coordinates, zoom: zoom + 0.4, speed: 0.8 });
+          m.flyTo({ center: (f.geometry as any).coordinates, zoom: zoom + 0.4, speed: 0.8, animate: !prefersReducedMotion() });
         });
 
         // Tap an individual tree → inspect.
@@ -170,7 +173,7 @@ export function ForestMap({
 
   function flyToMyGrove() {
     const b = boundsOf(myCoords);
-    if (b && mapRef.current) mapRef.current.fitBounds(b, { padding: 120, maxZoom: 14, duration: 1600 });
+    if (b && mapRef.current) mapRef.current.fitBounds(b, { padding: 120, maxZoom: 14, duration: prefersReducedMotion() ? 0 : 1600 });
   }
 
   return (

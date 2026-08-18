@@ -59,11 +59,9 @@ ok("Guest A sign-in", !signErr && !!signA?.user, signErr ? "→ " + signErr.mess
 if (signErr) process.exit(1);
 const uidA = signA.user.id;
 
-// Plant the free first tree.
+// Plant the free first tree via the sanctioned RPC.
 const { data: tree, error: plantErr } = await a
-  .from("trees")
-  .insert({ owner_id: uidA, species_key: "maple", name: "verify-step4", visual_seed: 7, lat: 42.33, lng: -83.05, region_label: "Detroit" })
-  .select("*")
+  .rpc("plant_tree", { p_species: "maple", p_name: "verify-step4", p_lat: 42.33, p_lng: -83.05, p_region: "Detroit" })
   .single();
 ok("Guest A plants first tree", !plantErr && !!tree, plantErr ? "→ " + plantErr.message : "");
 
@@ -86,10 +84,9 @@ const ledgerSum = (txs ?? []).reduce((s, t) => s + t.amount, 0);
 ok("Cached balance == ledger sum", ledgerSum === p2?.seeds, `(ledger=${ledgerSum})`);
 ok("Exactly one daily_checkin row", (txs ?? []).filter((t) => t.reason === "daily_checkin").length === 1);
 
-// Age the tree past maturity, then check in → +3 maturity bonus, once.
+// Age the tree past maturity (dev_warp — 0008), then check in → +3 bonus, once.
 if (tree) {
-  const eightDaysAgo = new Date(Date.now() - 8 * 86400000).toISOString();
-  await a.from("trees").update({ planted_at: eightDaysAgo }).eq("id", tree.id);
+  await a.rpc("dev_warp", { p_tree: tree.id, p_days: 8 });
 
   const { data: p3 } = await a.rpc("check_in");
   ok("Maturity bonus (+3) granted after day 7", p3?.seeds === 4, `(seeds=${p3?.seeds})`);

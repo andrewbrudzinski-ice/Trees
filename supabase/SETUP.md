@@ -140,3 +140,18 @@ When you move to Step 2, apply the next migration the same way:
    and idempotent.
 2. No new dashboard toggles.
 3. Verify: `node scripts/verify-step8b.mjs` → should end with "📍 Step 8b verified".
+
+---
+
+## Step 9 (anti-cheat hardening) — one migration
+
+1. **SQL Editor → New query**, paste all of `supabase/migrations/0008_hardening.sql`,
+   and **Run**. It removes the client's direct write paths on `trees` (plant + age
+   are now RPC-only), adds an `app_config.dev_mode` flag, and adds guarded dev
+   time-warp helpers. Additive and idempotent.
+   - The migration seeds `dev_mode = true` so this **dev** project can still use
+     the time-warp and run the `verify-*.mjs` scripts. **Before a production
+     launch, set it false:** `update public.app_config set dev_mode = false;`
+2. No new dashboard toggles.
+3. Verify: `node scripts/verify-step9.mjs` → should end with "🛡️ Step 9 verified".
+   (The earlier verify scripts still pass — they now plant/age via the RPCs.)

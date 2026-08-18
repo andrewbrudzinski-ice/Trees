@@ -78,31 +78,19 @@ if (spErr) {
   ok("locked species carry an unlock_rule", !!cherry && cherry.is_free === false && !!cherry.unlock_rule);
 }
 
-// --- Guest A: plant a tree + log an event, scoped to itself -----------------
-const treeIns = {
-  owner_id: uidA,
-  species_key: "maple",
-  name: "verify-step2",
-  visual_seed: Math.floor(Math.random() * 1_000_000),
-  lat: 42.3314,
-  lng: -83.0458,
-  region_label: "Detroit",
-};
-const { data: tree, error: treeErr } = await a.from("trees").insert(treeIns).select("*").single();
-ok("Guest A can plant a tree (RLS insert)", !treeErr && !!tree, treeErr ? "→ " + treeErr.message : "");
+// --- Guest A: plant a tree via the sanctioned RPC (0008: no direct insert) ---
+const { data: tree, error: treeErr } = await a
+  .rpc("plant_tree", { p_species: "maple", p_name: "verify-step2", p_lat: 42.3314, p_lng: -83.0458, p_region: "Detroit" })
+  .single();
+ok("Guest A can plant a tree (plant_tree RPC)", !treeErr && !!tree, treeErr ? "→ " + treeErr.message : "");
 if (tree) {
   ok("tree.owner_id == guest A", tree.owner_id === uidA);
   ok("tree.is_alive defaults true", tree.is_alive === true);
   ok("planted_at is server-set", !!tree.planted_at);
   console.log("   tree:", tree.id, "|", tree.species_key, "|", tree.name);
 
-  const { error: evErr } = await a
-    .from("tree_events")
-    .insert({ tree_id: tree.id, kind: "planted", meta: { via: "verify-step2" } });
-  ok("Guest A can log a tree_event", !evErr, evErr ? "→ " + evErr.message : "");
-
   const { data: ownEvents } = await a.from("tree_events").select("*").eq("tree_id", tree.id);
-  ok("Guest A sees its own tree_events", (ownEvents?.length ?? 0) >= 1, `(saw ${ownEvents?.length})`);
+  ok("Guest A sees its own 'planted' event", (ownEvents ?? []).some((e) => e.kind === "planted"), `(saw ${ownEvents?.length})`);
 }
 
 // --- Guest B: must not see or write into guest A's tree ----------------------
@@ -117,12 +105,12 @@ if (tree) {
   ok("RLS: guest B cannot read guest A's tree_events", (leakEvents?.length ?? 0) === 0, leakEvents?.length ? "→ LEAKED!" : "");
 }
 
-// Guest B forging a tree owned by A must be rejected by the insert check.
+// Direct client INSERT into trees is blocked entirely (0008 — plant only via RPC).
 const { data: forged, error: forgeErr } = await b
   .from("trees")
-  .insert({ ...treeIns, name: "forged" })
+  .insert({ owner_id: uidA, species_key: "maple", name: "forged", visual_seed: 1, lat: 0, lng: 0 })
   .select("*");
-ok("RLS: guest B cannot plant a tree owned by A", !!forgeErr || (forged?.length ?? 0) === 0, forged?.length ? "→ FORGED!" : "");
+ok("Direct client insert into trees is blocked", !!forgeErr || (forged?.length ?? 0) === 0, forged?.length ? "→ FORGED!" : "");
 
 // Guest B can still read the shared species catalog.
 const { data: spB } = await b.from("species").select("key");

@@ -70,7 +70,7 @@ else ok("Guest plants first tree (free)", true);
 
 // Age it far past every milestone so one check-in yields plenty of seeds.
 const { data: treeA } = await a.from("trees").select("id").eq("owner_id", uidA).single();
-await a.from("trees").update({ planted_at: new Date(Date.now() - 2000 * 86400000).toISOString() }).eq("id", treeA.id);
+await a.rpc("dev_warp", { p_tree: treeA.id, p_days: 2000 });
 const { data: prof1 } = await a.rpc("check_in");
 ok("Check-in with an ancient tree earns ≥ 7 seeds", (prof1?.seeds ?? 0) >= 7, `(seeds=${prof1?.seeds})`);
 

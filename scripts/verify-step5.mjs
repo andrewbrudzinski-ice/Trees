@@ -64,9 +64,7 @@ const { data: prof0 } = await a.from("profiles").select("water").eq("id", uidA).
 ok("Starts with 3 water", prof0?.water === 3, `(water=${prof0?.water})`);
 
 const { data: tree } = await a
-  .from("trees")
-  .insert({ owner_id: uidA, species_key: "oak", name: "verify-step5", visual_seed: 5, lat: 51.5, lng: -0.12, region_label: "London" })
-  .select("*")
+  .rpc("plant_tree", { p_species: "oak", p_name: "verify-step5", p_lat: 51.5, p_lng: -0.12, p_region: "London" })
   .single();
 ok("Guest A plants a tree", !!tree);
 

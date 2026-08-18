@@ -64,7 +64,7 @@ if (pErr) ok("Guest A plants a tree", false, "→ " + pErr.message);
 const { data: treeA } = await a.from("trees").select("id").eq("owner_id", uidA).single();
 
 await a.rpc("water", { p_tree: treeA.id }); // a private 'watered' event
-await a.from("trees").update({ planted_at: new Date(Date.now() - 400 * 86400000).toISOString() }).eq("id", treeA.id);
+await a.rpc("dev_warp", { p_tree: treeA.id, p_days: 400 });
 await a.rpc("check_in"); // logs planted/sapling/mature/age_30/age_100/age_365
 
 // --- Guest B: inspect A's tree publicly ------------------------------------

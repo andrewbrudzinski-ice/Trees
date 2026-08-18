@@ -286,10 +286,37 @@ Scale path to millions of trees (spec §13, staged): the `trees_geo_idx` GIST
 index is in place; MVP uses client-side heatmap + clustering, and the next scale
 step swaps in a **server aggregation RPC / vector tiles** by bbox+zoom.
 
-## Next — Step 9: Polish + anti-cheat pass (roadmap §17.9)
+## Step 9 — Polish + anti-cheat pass (roadmap §17.9) — BUILT
 
-Rate limits and dedupe-key coverage on the action RPCs; an **RLS audit** — verify
-inspect/profile leak no health/email (largely covered by verify-step7) and
-**close the direct-`trees`-INSERT gap** so `plant_tree` is the only plant path
-(the deferred item from Step 6); reduced-motion and mobile polish. Then Step 10:
-ship + instrument the day-1→day-7 funnel and guest→signup conversion.
+Offline-verified (46 unit tests + typecheck + lint + `next build` all green).
+Live check needs migration `0008` applied.
+
+- **Migration `0008_hardening.sql`**: removes the client's direct write paths on
+  `trees` — **plant and age are now RPC-only** (`plant_tree` / `check_in` /
+  `water`). Closes two real holes: bypassing the plant cost via direct INSERT,
+  and **faking age** by directly setting `planted_at` (which would mint milestone
+  seeds and defeat "server owns time"). Adds `app_config.dev_mode` and guarded
+  `dev_warp` / `dev_dry_out` helpers so the time-warp still works locally but is
+  **inert in production** (dev_mode=false).
+- Dev route + all `verify-*.mjs` scripts now plant via `plant_tree` and age via
+  `dev_warp` (no more direct table writes).
+- **`verify-step9.mjs`**: consolidated audit — direct tree insert/update blocked,
+  no self-promotion / seed-minting, and no cross-user health/history/profile leak.
+- Polish: `overscroll-behavior:none` (app-like, no rubber-band), iOS text-zoom
+  off, and the map's fly/zoom animations respect `prefers-reduced-motion`.
+
+Anti-cheat surface now: balances & is_guest are column-locked (0005); seeds are
+minted only inside SECURITY DEFINER RPCs with idempotency dedupe keys; trees are
+plant/age-locked to RPCs (0008); public reads go through scoped views (0006).
+Rate-limiting is effectively provided by daily idempotency (check-in) and economy
+caps (water/seed balances); a dedicated token-bucket limiter on the RPCs is a
+sensible production fast-follow.
+
+## Next — Step 10: Ship + instrument (roadmap §17.10)
+
+Deploy the app (e.g. Vercel), point it at the Supabase project, set the env vars
+(and a production Supabase project with `dev_mode=false`); instrument the
+day-1→day-7 funnel and guest→signup conversion; then tune the second-tree cost
+(`SECOND_TREE_COST`, spec §6a/§12) from real data. Optional polish available any
+time: MapTiler key for nicer tiles, map-based server aggregation for scale, and a
+live-eyes tuning pass on the globe's look.
