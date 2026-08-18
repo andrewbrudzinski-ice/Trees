@@ -435,6 +435,217 @@ button.btn:disabled {
   border-color: var(--moss-deep);
 }
 
+/* ===== Step 6: Grove, account gate, nav ================================== */
+
+.linklike {
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--moss);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  padding: 4px;
+}
+.linklike.dim {
+  color: var(--bone-dim);
+}
+
+/* Fixed bottom nav; Home/Grove pad their bottoms to clear it. */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  justify-content: space-around;
+  padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, var(--ink) 60%, transparent);
+  z-index: 20;
+}
+.bottom-nav button {
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 18px;
+  background: transparent;
+  border: none;
+  color: var(--bone-dim);
+  cursor: pointer;
+  opacity: 0.7;
+}
+.bottom-nav button span {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.bottom-nav button.active {
+  color: var(--moss);
+  opacity: 1;
+}
+.bottom-nav button.soon {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.home,
+.grove {
+  padding-bottom: 84px;
+}
+
+/* --- Grove --- */
+.grove {
+  flex: 1;
+  min-height: 100dvh;
+  padding-top: 24px;
+  display: flex;
+  flex-direction: column;
+}
+.grove-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+.grove-title {
+  font-size: 26px;
+  margin: 0;
+  font-weight: 500;
+}
+.grove-sub {
+  color: var(--bone-dim);
+  font-size: 13px;
+  margin: 2px 0 0;
+}
+.chip-btn {
+  font-family: inherit;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  background: var(--moss);
+  border: none;
+  border-radius: 100px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+.chip-btn.ghost {
+  background: transparent;
+  color: var(--bone-dim);
+  border: 1px solid var(--ink-3);
+}
+.grove-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.grove-card {
+  background: var(--ink-2);
+  border: 1px solid var(--ink-3);
+  border-radius: var(--radius);
+  padding: 12px;
+  text-align: center;
+}
+.grove-mini {
+  width: 100%;
+  height: 120px;
+}
+.gname {
+  font-size: 16px;
+  margin-top: 4px;
+}
+.gmeta {
+  font-size: 11px;
+  color: var(--bone-dim);
+  margin-top: 2px;
+}
+.gtier {
+  font-size: 11px;
+  color: var(--moss);
+  margin-top: 4px;
+  letter-spacing: 0.04em;
+}
+
+/* Plant slot */
+.plant-slot {
+  font-family: inherit;
+  color: var(--bone);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 190px;
+  border-style: dashed;
+}
+.plant-slot.locked {
+  opacity: 0.55;
+  cursor: default;
+}
+.plant-slot.gate {
+  border-color: var(--gold);
+}
+.plant-slot.plantable {
+  border-color: var(--moss);
+}
+.slot-plus {
+  font-size: 30px;
+  color: var(--moss);
+  line-height: 1;
+}
+.plant-slot.gate .slot-plus {
+  color: var(--gold);
+}
+.slot-text {
+  font-size: 13px;
+  line-height: 1.4;
+}
+.slot-dim {
+  color: var(--bone-dim);
+  font-size: 11px;
+}
+
+/* --- Account sheet --- */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(6, 12, 9, 0.72);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 40;
+  animation: fadeIn 0.25s ease both;
+}
+.sheet {
+  width: 100%;
+  max-width: 520px;
+  background: var(--ink-2);
+  border: 1px solid var(--ink-3);
+  border-radius: 22px 22px 0 0;
+  padding: 28px 22px calc(28px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+}
+.sheet .text-input {
+  width: 100%;
+  max-width: 320px;
+}
+
+.error-float {
+  position: fixed;
+  bottom: 88px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.001ms !important;

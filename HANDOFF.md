@@ -182,10 +182,37 @@ time-since-care, so any care — a check-in visit or a watering — refreshes it
 full under the gentle MVP. The spec's separate +15/+22 restore amounts remain as
 constants for a later accumulation model; they don't change the derivation now.
 
-## Next — Step 6: Second tree + Grove + the account gate (roadmap §17.6)
+## Step 6 — Second tree + Grove + the account gate (roadmap §17.6) — BUILT
 
-The account moment. A **Grove** grid of the user's trees; a state-aware plant
-slot (locked / guest-account-gate / plantable) keyed off `SECOND_TREE_COST = 7`;
-Supabase **email signup with anonymous→email account linking** so a guest's seeds
-and first tree carry over with no data migration; sign in / sign out. This is the
-one flow the prototype fakes and the real build must get right (spec §6a).
+Offline-verified (34 unit tests + typecheck + lint + `next build` all green).
+Live check needs migration `0005` applied AND **"Confirm email" turned OFF**.
+
+- **Migration `0005_account_gate.sql`**:
+  - `plant_tree()` RPC — the sanctioned plant path: first tree free (guest ok);
+    second+ requires `is_guest=false` AND ≥ 7 seeds, which it deducts. The gate.
+  - `on_auth_user_updated` trigger — flips `is_guest=false` when Supabase converts
+    an anonymous guest into a permanent user **in place** (same id → seeds + trees
+    carry over, no data migration).
+  - Locks client profile writes to `display_name` only (revoke + column grant), so
+    a client can never self-set `is_guest`/`seeds`/`water` (anti-cheat, §14).
+- **UI**: bottom nav (Home / Grove; Forest is Step 8). **Grove** = tree grid +
+  state-aware plant slot (locked / account-gate / plantable). **Account** sheet =
+  signup (links the guest via `updateUser`) / signin (`signInWithPassword`) /
+  signout. Welcome gains "I already have an account". PlantFlow now plants via
+  `plant_tree` (first and second trees alike).
+- `scripts/verify-step6.mjs`: gate → link → carryover → cost deduction →
+  re-signin → anti-cheat column lock.
+
+Anti-cheat note: the client `trees` INSERT policy from 0002 is still present (dev
+tooling + earlier verify scripts use it), so a determined client could still
+direct-insert a free tree, bypassing `plant_tree`'s cost. Closing that (force all
+plants through the RPC) is on the **Step 9** anti-cheat/RLS-audit list.
+
+## Next — Step 7: Journal + Inspect + Profile + Admire (roadmap §17.7)
+
+Per-tree **Journal** (own tree: health + full `tree_events` timeline) and public
+**Inspect** of any tree (species, age, stage, planted date, location, admiration
+count — never another user's health or private history); **public profiles**
+(display name, join date, aggregate grove stats); and the **`tree_reactions`**
+admire flow (one per user per tree). Needs a `0006` migration for `tree_reactions`
++ the public-but-scoped read views (spec §8 "two public-but-scoped read paths").

@@ -104,3 +104,18 @@ When you move to Step 2, apply the next migration the same way:
    daily water. Additive and idempotent.
 2. No new dashboard toggles.
 3. Verify: `node scripts/verify-step5.mjs` → should end with "💧 Step 5 verified".
+
+---
+
+## Step 6 (Account gate) — migration + one toggle
+
+1. **SQL Editor → New query**, paste all of
+   `supabase/migrations/0005_account_gate.sql`, and **Run**. It adds `plant_tree()`,
+   the guest→member `is_guest` trigger, and locks profile writes to `display_name`.
+   Additive and idempotent.
+2. **Turn OFF "Confirm email"** for the MVP: **Authentication → Providers → Email**
+   → uncheck **Confirm email** → Save. This lets a guest link an email account
+   *instantly* (the anonymous session converts in place, so seeds + first tree
+   carry over with no data migration). Production can re-enable confirmation later
+   with a "check your email" step.
+3. Verify: `node scripts/verify-step6.mjs` → should end with "🌲 Step 6 verified".

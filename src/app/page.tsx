@@ -7,19 +7,24 @@ import type { HomePayload } from "@/lib/tree/api";
 import type { Species } from "@/lib/types";
 import { PlantFlow } from "@/components/PlantFlow";
 import { Home } from "@/components/Home";
+import { Grove } from "@/components/Grove";
+import { Account } from "@/components/Account";
+import { BottomNav, type Tab } from "@/components/BottomNav";
 
 /**
- * The Tree — plant-first onboarding + Home (roadmap Step 4).
+ * The Tree — app shell (roadmap Steps 4–6).
  *
- * Welcome → plant your first tree as a guest (no signup) → Home, where the
- * daily loop lives: check in for seeds, watch the tree grow. All derived state
- * (age/stage/health, balances) comes from the server; the client only draws and
- * triggers server RPCs.
+ * Welcome → plant as a guest → Home / Grove. The second tree is the account
+ * moment: the Grove plant slot gates a guest into signup, which links the
+ * anonymous session in place so seeds + first tree carry over.
  */
 export default function App() {
   const [supabase, setSupabase] = useState<SupabaseClient | null>(null);
   const [species, setSpecies] = useState<Species[]>([]);
   const [payload, setPayload] = useState<HomePayload | null>(null);
+  const [tab, setTab] = useState<Tab>("home");
+  const [plantingSecond, setPlantingSecond] = useState(false);
+  const [account, setAccount] = useState<"signup" | "signin" | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,14 +41,11 @@ export default function App() {
     setPayload((await res.json()) as HomePayload);
   }, []);
 
-  // Initial load: species catalog (readable pre-auth) + home state.
   useEffect(() => {
     if (!supabase) return;
     let active = true;
     (async () => {
-      const [{ data: sp }] = await Promise.all([
-        supabase.from("species").select("*").order("key"),
-      ]);
+      const { data: sp } = await supabase.from("species").select("*").order("key");
       if (!active) return;
       setSpecies((sp as Species[]) ?? []);
       await refetchHome();
@@ -59,16 +61,9 @@ export default function App() {
     if (!supabase) return;
     setBusy(true);
     setError(null);
-    const { error: signErr } = await supabase.auth.signInAnonymously();
-    if (signErr) {
-      setError(
-        signErr.message +
-          " — is anonymous sign-in enabled in Supabase (Authentication → Sign In / Providers)?",
-      );
-      setBusy(false);
-      return;
-    }
-    await refetchHome();
+    const { error: e } = await supabase.auth.signInAnonymously();
+    if (e) setError(e.message + " — is anonymous sign-in enabled in Supabase?");
+    else await refetchHome();
     setBusy(false);
   };
 
@@ -76,8 +71,8 @@ export default function App() {
     if (!supabase) return;
     setBusy(true);
     setError(null);
-    const { error: rpcErr } = await supabase.rpc("check_in");
-    if (rpcErr) setError(rpcErr.message);
+    const { error: e } = await supabase.rpc("check_in");
+    if (e) setError(e.message);
     await refetchHome();
     setBusy(false);
   };
@@ -86,10 +81,25 @@ export default function App() {
     if (!supabase) return;
     setBusy(true);
     setError(null);
-    const { error: rpcErr } = await supabase.rpc("water", { p_tree: treeId });
-    if (rpcErr) setError(rpcErr.message);
+    const { error: e } = await supabase.rpc("water", { p_tree: treeId });
+    if (e) setError(e.message);
     await refetchHome();
     setBusy(false);
+  };
+
+  const signOut = async () => {
+    if (!supabase) return;
+    setBusy(true);
+    await supabase.auth.signOut();
+    setTab("home");
+    setPlantingSecond(false);
+    await refetchHome();
+    setBusy(false);
+  };
+
+  const onAccountDone = async () => {
+    await refetchHome();
+    setTab("grove");
   };
 
   const devWarp = async (days: number) => {
@@ -99,7 +109,6 @@ export default function App() {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ days }),
     });
-    // A warp changes planted_at; a check-in then collects any milestones reached.
     if (supabase) await supabase.rpc("check_in");
     await refetchHome();
     setBusy(false);
@@ -107,7 +116,6 @@ export default function App() {
 
   const devDryOut = async (days: number) => {
     setBusy(true);
-    // Age the care timestamps only (no check-in after), so health visibly decays.
     await fetch("/api/dev/time-warp", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -117,14 +125,12 @@ export default function App() {
     setBusy(false);
   };
 
-  // --- Render by phase -------------------------------------------------------
-  const phase = !supabase || payload === null
-    ? "loading"
-    : !payload.authed
-      ? "welcome"
-      : payload.trees.length === 0
-        ? "plant"
-        : "home";
+  const authed = payload?.authed === true;
+  const trees = authed ? payload.trees : [];
+  const mustPlantFirst = authed && trees.length === 0;
+  const showPlant = supabase && authed && (mustPlantFirst || plantingSecond);
+
+  const phase = !supabase || payload === null ? "loading" : !authed ? "welcome" : "app";
 
   return (
     <main className="app-frame">
@@ -146,35 +152,59 @@ export default function App() {
           <button className="btn fade-in" onClick={plantAsGuest} disabled={busy}>
             {busy ? "Planting…" : "Plant your first tree"}
           </button>
-          <p className="sub fade-in" style={{ fontSize: 12, opacity: 0.7 }}>
-            No signup — this creates a guest identity.
-          </p>
+          <button className="linklike fade-in" onClick={() => setAccount("signin")} disabled={busy}>
+            I already have an account
+          </button>
           {error && <p className="error fade-in">{error}</p>}
         </div>
       )}
 
-      {phase === "plant" && supabase && payload?.authed && (
+      {phase === "app" && showPlant && (
         <PlantFlow
-          supabase={supabase}
+          supabase={supabase!}
           species={species}
-          userId={payload.profile?.id ?? ""}
-          onPlanted={refetchHome}
+          onPlanted={async () => {
+            setPlantingSecond(false);
+            setTab("home");
+            await refetchHome();
+          }}
         />
       )}
 
-      {phase === "home" && payload?.authed && (
+      {phase === "app" && authed && !showPlant && (
         <>
-          <Home
-            payload={payload}
-            speciesByKey={speciesByKey}
-            onCheckin={checkIn}
-            onWater={water}
-            onDevWarp={devWarp}
-            onDevDryOut={devDryOut}
-            busy={busy}
-          />
-          {error && <p className="error fade-in">{error}</p>}
+          {tab === "home" ? (
+            <Home
+              payload={payload}
+              speciesByKey={speciesByKey}
+              onCheckin={checkIn}
+              onWater={water}
+              onDevWarp={devWarp}
+              onDevDryOut={devDryOut}
+              busy={busy}
+            />
+          ) : (
+            <Grove
+              payload={payload}
+              speciesByKey={speciesByKey}
+              onPlantSlot={() => setPlantingSecond(true)}
+              onCreateAccount={() => setAccount("signup")}
+              onSignOut={signOut}
+              busy={busy}
+            />
+          )}
+          <BottomNav tab={tab} onTab={setTab} />
+          {error && <p className="error fade-in error-float">{error}</p>}
         </>
+      )}
+
+      {account && supabase && (
+        <Account
+          supabase={supabase}
+          initialMode={account}
+          onClose={() => setAccount(null)}
+          onDone={onAccountDone}
+        />
       )}
     </main>
   );

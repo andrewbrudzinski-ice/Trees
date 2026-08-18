@@ -38,12 +38,10 @@ function speciesPreview(species: Species): string {
 export function PlantFlow({
   supabase,
   species,
-  userId,
   onPlanted,
 }: {
   supabase: SupabaseClient;
   species: Species[];
-  userId: string;
   onPlanted: () => void;
 }) {
   const free = useMemo(() => species.filter((s) => s.is_free), [species]);
@@ -61,27 +59,21 @@ export function PlantFlow({
     setBusy(true);
     setError(null);
     setStep("planting");
-    const seed = Math.floor(Math.random() * 1_000_000);
-    const { data, error: insErr } = await supabase
-      .from("trees")
-      .insert({
-        owner_id: userId,
-        species_key: chosen,
-        name: name.trim() || "My Tree",
-        visual_seed: seed,
-        lat: place.lat,
-        lng: place.lng,
-        region_label: place.name,
-      })
-      .select("id")
-      .single();
-    if (insErr || !data) {
-      setError(insErr?.message ?? "Could not plant the tree.");
+    // plant_tree() is the sanctioned path: it enforces first-free / second-cost,
+    // logs the 'planted' event, and (for a paid tree) deducts seeds server-side.
+    const { error: rpcErr } = await supabase.rpc("plant_tree", {
+      p_species: chosen,
+      p_name: name.trim() || "My Tree",
+      p_lat: place.lat,
+      p_lng: place.lng,
+      p_region: place.name,
+    });
+    if (rpcErr) {
+      setError(rpcErr.message);
       setBusy(false);
       setStep("place");
       return;
     }
-    await supabase.from("tree_events").insert({ tree_id: data.id, kind: "planted" });
     // Let the seed settle, then into Home.
     setTimeout(onPlanted, 2200);
   }
