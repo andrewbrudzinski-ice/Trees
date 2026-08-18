@@ -193,6 +193,24 @@ button.btn:disabled {
   }
 }
 
+/* Ambient sway for procedurally rendered trees (renderTree emits <g
+   class="tree-breathe">). Origin is the ground point in the SVG's 200×240
+   viewBox. Disabled under reduced-motion by the global rule below. */
+.tree-breathe {
+  transform-box: view-box;
+  transform-origin: 100px 222px;
+  animation: treeBreathe 6s ease-in-out infinite;
+}
+@keyframes treeBreathe {
+  0%,
+  100% {
+    transform: rotate(-0.6deg);
+  }
+  50% {
+    transform: rotate(0.6deg) scaleY(1.008);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.001ms !important;

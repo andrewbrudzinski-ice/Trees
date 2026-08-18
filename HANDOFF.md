@@ -99,10 +99,38 @@ named lifespan stays on the diverging part of the curve (Elder ≈ 3.80, unclipp
    guest planting a tree + logging an event, and RLS blocking a second guest from
    reading or forging into the first's tree, ending "🌳 Step 2 verified".
 
-## Next — Step 3: Procedural renderer (roadmap §17.3)
+## Step 3 — Procedural renderer (roadmap §17.3) — BUILT
 
-Port the prototype's `renderTree()` to a typed module producing SVG from
-`(species, g, ageFactor, health, visual_seed)`; wire `species.render_params`;
-verify a 7-day, 365-day, and 2000-day tree each read distinctly (the `ageFactor`
-curve above is what makes that possible). Keep age/growth/health derived
-server-side; the client requests render state, never computes it.
+Offline-verified (31 unit tests + typecheck + lint + `next build` all green).
+This step is fully client/server-side rendering — no new DB or network.
+
+- **`src/lib/tree/render.ts`**: `renderTree({ species, g, ageFactor, health, seed })`
+  → SVG string. Pure, DOM-free, SSR-safe; the same function runs on the client
+  and (for thumbnails) the server (spec §16). Ported from the prototype's
+  `renderTree()`, preserving its geometry constants and RNG call order so output
+  is deterministic per `seed`. Also exports `speciesVisual(key, render_params)`
+  to build the visual from a `species` row.
+- **`src/lib/tree/render.test.ts`** (14 tests): output shape, determinism,
+  seed-mound + two-leaf-sprout early stages, per-species canopies (pine
+  triangles / willow strands / cherry blossoms), health dimming, and the
+  **§17.3 divergence gate** — element count rises monotonically 7 → 30 → 100 →
+  365 → 1000 → 2000 (10→22→28→30→35→39), so ancient trees keep reading distinctly
+  (this only holds because of the raised `ageFactor` cap from Step 2).
+- **`.tree-breathe`** ambient-sway CSS added to `globals.css` (respects
+  reduced-motion); the renderer emits `<g class="tree-breathe">`.
+- **`scripts/render-gallery.mjs`**: renders 6 species × 9 ages into a
+  self-contained HTML gallery via Node's TS type-stripping —
+  `node scripts/render-gallery.mjs out.html` — for eyeballing the divergence.
+
+The renderer takes `g`/`ageFactor`/`health` as inputs; callers derive them from
+timestamps via `growth.ts` (server-authoritative) and pass them in. It never
+reads a clock.
+
+## Next — Step 4: Plant-first onboarding + Home (roadmap §17.4)
+
+Species/name/map-pin plant flow **as a guest** (no signup wall); the home
+screen showing the tree via `renderTree` + `computeTreeState`; a check-in RPC +
+seed ledger (idempotent `dedupe_key`, e.g. `checkin:{user}:{date}` per §12/§14).
+This is where the growth math, renderer, and the guest identity from Step 1 all
+come together into the real loop. Keep balances/age/health server-derived; the
+client requests render state, never computes it.
